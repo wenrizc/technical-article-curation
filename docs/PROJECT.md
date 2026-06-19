@@ -6,7 +6,7 @@ Languages: [English](PROJECT.md) | [简体中文](PROJECT.zh-CN.md)
 
 Technical Article Curation is an AI-assisted pipeline for discovering, evaluating, and publishing high-quality technical articles. The project focuses on long-term engineering value rather than short-lived news, marketing content, or shallow tutorials.
 
-The MVP is data-first. It publishes stable JSON and Markdown artifacts under `public/`, which can later be consumed by a website, internal knowledge base, or other publishing channel.
+The project is data-first. It publishes stable JSON and Markdown artifacts under `public/`, which can later be consumed by a website, internal knowledge base, or other publishing channel.
 
 ## Goals
 
@@ -21,10 +21,10 @@ The MVP is data-first. It publishes stable JSON and Markdown artifacts under `pu
 ## Non-Goals
 
 - This is not a general news aggregator.
-- The MVP does not provide a web UI or review dashboard.
-- The MVP does not try to cover every technical source.
-- The MVP does not prioritize real-time publishing.
-- The MVP does not perform full copyright or takedown automation.
+- The current implementation does not provide a web UI or review dashboard.
+- The current implementation does not try to cover every technical source.
+- The current implementation does not prioritize real-time publishing.
+- The current implementation does not perform full copyright or takedown automation.
 
 ## Content Criteria
 
@@ -49,7 +49,7 @@ The system rejects or avoids:
 
 ## Sources
 
-The default source configuration is in `config/sources.yaml`. MVP sources are verified RSS/Atom feeds from engineering teams, technical communities, and personal technical blogs.
+The default source configuration is in `config/sources.yaml`. Current sources are verified RSS/Atom feeds from engineering teams, technical communities, and personal technical blogs.
 
 Included examples:
 
@@ -197,4 +197,4 @@ uv run pytest
 
 ## Risks
 
-The MVP intentionally stores and publishes fetched Markdown content. This creates article mirroring behavior. Published Markdown must preserve source attribution and original URLs, but future work should add explicit takedown handling, source-level mirror policy, and content update/removal workflows.
+The current implementation intentionally stores and publishes fetched Markdown content. This creates article mirroring behavior. Published Markdown must preserve source attribution and original URLs, but future work should add explicit takedown handling, source-level mirror policy, and content update/removal workflows.
