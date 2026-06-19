@@ -1,0 +1,107 @@
+sources:
+  - name: "美团技术团队"
+    rss_url: "https://tech.meituan.com/feed/"
+    site_url: "https://tech.meituan.com/"
+    enabled: true
+    display: "featured"
+    tags: ["Engineering", "Architecture", "China"]
+
+  - name: "有赞技术团队"
+    rss_url: "https://tech.youzan.com/rss/"
+    site_url: "https://tech.youzan.com/"
+    enabled: true
+    display: "featured"
+    tags: ["Engineering", "Architecture", "China"]
+
+  - name: "Cloudflare Blog"
+    rss_url: "https://blog.cloudflare.com/rss/"
+    site_url: "https://blog.cloudflare.com/"
+    enabled: true
+    display: "featured"
+    tags: ["Infrastructure", "Security", "Performance"]
+
+  - name: "GitHub Engineering"
+    rss_url: "https://github.blog/engineering/feed/"
+    site_url: "https://github.blog/engineering/"
+    enabled: true
+    display: "featured"
+    tags: ["Developer Tools", "Engineering"]
+
+  - name: "Dropbox Tech"
+    rss_url: "https://dropbox.tech/feed"
+    site_url: "https://dropbox.tech/"
+    enabled: true
+    display: "default"
+    tags: ["Infrastructure", "Engineering"]
+
+  - name: "Slack Engineering"
+    rss_url: "https://slack.engineering/feed/"
+    site_url: "https://slack.engineering/"
+    enabled: true
+    display: "default"
+    tags: ["Collaboration", "Engineering"]
+
+  - name: "Meta Engineering"
+    rss_url: "https://engineering.fb.com/feed/"
+    site_url: "https://engineering.fb.com/"
+    enabled: true
+    display: "default"
+    tags: ["Infrastructure", "AI", "Engineering"]
+
+  - name: "Kubernetes Blog"
+    rss_url: "https://kubernetes.io/feed.xml"
+    site_url: "https://kubernetes.io/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Kubernetes", "Cloud Native"]
+
+  - name: "CNCF Blog"
+    rss_url: "https://www.cncf.io/feed/"
+    site_url: "https://www.cncf.io/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Cloud Native", "Infrastructure"]
+
+  - name: "InfoQ 中文"
+    rss_url: "https://www.infoq.cn/feed"
+    site_url: "https://www.infoq.cn/"
+    enabled: true
+    display: "default"
+    tags: ["Architecture", "China", "Community"]
+
+  - name: "SegmentFault"
+    rss_url: "https://segmentfault.com/feeds"
+    site_url: "https://segmentfault.com/"
+    enabled: true
+    display: "default"
+    tags: ["Community", "China"]
+
+  - name: "Martin Fowler"
+    rss_url: "https://martinfowler.com/feed.atom"
+    site_url: "https://martinfowler.com/"
+    enabled: true
+    display: "featured"
+    tags: ["Architecture", "Software Design", "Personal Blog"]
+
+  - name: "Julia Evans"
+    rss_url: "https://jvns.ca/atom.xml"
+    site_url: "https://jvns.ca/"
+    enabled: true
+    display: "featured"
+    tags: ["Debugging", "Linux", "Personal Blog"]
+
+  - name: "Brendan Gregg"
+    rss_url: "https://www.brendangregg.com/blog/rss.xml"
+    site_url: "https://www.brendangregg.com/blog/"
+    enabled: true
+    display: "featured"
+    tags: ["Performance", "Observability", "Personal Blog"]
+
+  - name: "阮一峰的网络日志"
+    rss_url: "https://www.ruanyifeng.com/blog/atom.xml"
+    site_url: "https://www.ruanyifeng.com/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Web", "Personal Blog", "China"]
+
+manual_urls: []

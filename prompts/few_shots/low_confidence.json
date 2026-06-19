@@ -1,0 +1,19 @@
+{
+  "input_type": "insufficient_content",
+  "output": {
+    "decision": "low_confidence",
+    "confidence": "medium",
+    "dimensions": {
+      "工程价值": "medium",
+      "技术深度": "medium",
+      "原创性": "medium",
+      "可复用性": "medium",
+      "可读性": "low"
+    },
+    "summary": "文章似乎涉及真实工程实践，但抓取正文不完整，缺少足够证据判断是否值得收录。",
+    "tags": ["Engineering"],
+    "recommendation_reason": "暂不公开收录。需要补充正文或人工复核后再判断。",
+    "full_reasoning": "现有内容只显示部分段落或目录，无法确认技术深度、原创性和可复用性。为了避免错误自动发布，应进入低置信度留存。"
+  }
+}
+
