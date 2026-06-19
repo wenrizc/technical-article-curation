@@ -50,6 +50,9 @@ Runtime configuration is read from environment variables.
 - `TAC_PUBLIC_DIR`: publish output directory, default `public`. / 发布目录，默认 `public`。
 - `TAC_MAX_RETRY`: max retry count, default `3`. / 最大重试次数，默认 `3`。
 - `TAC_CRAWLER4AI_ENABLED`: enabled by default. Set to `false`, `0`, `no`, `off`, or `disabled` to skip Crawler4AI and use `requests + BeautifulSoup + markdownify` directly. / 默认启用。设置为 `false`、`0`、`no`、`off` 或 `disabled` 时跳过 Crawler4AI，直接使用 `requests + BeautifulSoup + markdownify` 回退抓取。
+- `TAC_PROMPT_LANGUAGE`: prompt language, default `zh-CN`; set to `en` for English summaries and reasons. / 提示词语言，默认 `zh-CN`；设置为 `en` 时输出英文摘要和推荐理由。
+- `TAC_PROMPT_PATH`: optional explicit prompt path. / 可选的显式提示词路径。
+- `TAC_FEW_SHOT_DIR`: optional explicit few-shot directory. / 可选的显式 few-shot 目录。
 - `TAC_AI_RESPONSE_PATH`: test-only fixed AI JSON response. / 测试用固定 AI JSON 响应文件。
 - `TAC_FETCH_FIXTURE_PATH`: test-only fixed Markdown content. / 测试用固定 Markdown 内容。
 

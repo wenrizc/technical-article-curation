@@ -17,6 +17,7 @@ class Settings:
     ai_response_path: Path | None
     fetch_fixture_path: Path | None
     crawler4ai_enabled: bool
+    prompt_language: str
     prompt_path: Path
     few_shot_dir: Path
 
@@ -32,7 +33,25 @@ def _bool_from_env(name: str, default: bool) -> bool:
     return value.strip().lower() not in {"0", "false", "no", "off", "disabled"}
 
 
+def _prompt_language() -> str:
+    value = os.environ.get("TAC_PROMPT_LANGUAGE", "zh-CN").strip()
+    aliases = {
+        "zh": "zh-CN",
+        "zh-cn": "zh-CN",
+        "cn": "zh-CN",
+        "chinese": "zh-CN",
+        "en": "en",
+        "en-us": "en",
+        "english": "en",
+    }
+    normalized = aliases.get(value.lower(), value)
+    if normalized not in {"zh-CN", "en"}:
+        raise ValueError("TAC_PROMPT_LANGUAGE must be one of: zh-CN, en")
+    return normalized
+
+
 def get_settings() -> Settings:
+    prompt_language = _prompt_language()
     return Settings(
         state_db=_path_from_env("TAC_STATE_DB", "data/state.db"),
         sources_path=_path_from_env("TAC_SOURCES_PATH", "config/sources.yaml"),
@@ -52,6 +71,7 @@ def get_settings() -> Settings:
             else None
         ),
         crawler4ai_enabled=_bool_from_env("TAC_CRAWLER4AI_ENABLED", True),
-        prompt_path=_path_from_env("TAC_PROMPT_PATH", "prompts/evaluate.md"),
-        few_shot_dir=_path_from_env("TAC_FEW_SHOT_DIR", "prompts/few_shots"),
+        prompt_language=prompt_language,
+        prompt_path=_path_from_env("TAC_PROMPT_PATH", f"prompts/{prompt_language}/evaluate.md"),
+        few_shot_dir=_path_from_env("TAC_FEW_SHOT_DIR", f"prompts/{prompt_language}/few_shots"),
     )

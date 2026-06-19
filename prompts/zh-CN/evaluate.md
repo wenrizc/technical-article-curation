@@ -2,6 +2,13 @@
 
 只输出 JSON，不要输出 Markdown、解释文字或代码块。
 
+输出语言要求：
+
+1. `summary` 必须是简短中文摘要，建议 1 句话，最长不超过 80 个中文字符。
+2. `recommendation_reason` 必须是面向公开展示的中文推荐理由，建议 1 句话。
+3. `full_reasoning` 必须是中文内部判断依据，说明关键证据、风险和边界。
+4. `tags` 可以使用简短英文技术标签，例如 `Architecture`、`Performance`、`Reliability`。
+
 判断优先级：
 
 1. 长期工程价值优先于短期热点、传播热度和标题吸引力。
@@ -25,8 +32,7 @@
   },
   "summary": "面向公开展示的简短中文摘要",
   "tags": ["标签1", "标签2"],
-  "recommendation_reason": "面向公开展示的推荐理由",
+  "recommendation_reason": "面向公开展示的中文推荐理由",
   "full_reasoning": "内部完整判断依据，说明关键证据、风险和边界"
 }
 ```
-

@@ -21,6 +21,7 @@ def test_evaluate_with_ai_uses_openai_sdk(monkeypatch, tmp_path):
         ai_response_path=None,
         fetch_fixture_path=None,
         crawler4ai_enabled=False,
+        prompt_language="zh-CN",
         prompt_path=prompt,
         few_shot_dir=few_shots,
     )

@@ -137,10 +137,11 @@ Configuration is provided through environment variables.
 - `TAC_PUBLIC_DIR`: publish output directory, default `public`. / 发布目录，默认 `public`。
 - `TAC_MAX_RETRY`: max retry count, default `3`. / 最大重试次数，默认 `3`。
 - `TAC_CRAWLER4AI_ENABLED`: enabled by default; set to `false`, `0`, `no`, `off`, or `disabled` to use fallback fetching directly. / 默认启用；设置为 `false`、`0`、`no`、`off` 或 `disabled` 时直接使用回退抓取。
+- `TAC_PROMPT_LANGUAGE`: prompt language, default `zh-CN`; set to `en` for English summaries and reasons. / 提示词语言，默认 `zh-CN`；设置为 `en` 时输出英文摘要和推荐理由。
+- `TAC_PROMPT_PATH`: optional explicit prompt path. / 可选的显式提示词路径。
+- `TAC_FEW_SHOT_DIR`: optional explicit few-shot directory. / 可选的显式 few-shot 目录。
 - `TAC_AI_RESPONSE_PATH`: test-only fixed AI JSON response. / 测试用固定 AI JSON 响应文件。
 - `TAC_FETCH_FIXTURE_PATH`: test-only fixed Markdown content. / 测试用固定 Markdown 内容。
-- `TAC_PROMPT_PATH`: prompt path, default `prompts/evaluate.md`. / Prompt 路径，默认 `prompts/evaluate.md`。
-- `TAC_FEW_SHOT_DIR`: few-shot directory, default `prompts/few_shots`. / few-shot 目录，默认 `prompts/few_shots`。
 
 ## Fetching / 抓取
 
@@ -158,9 +159,9 @@ AI evaluation uses the official OpenAI Python SDK with `base_url` support for Op
 
 AI 评估使用官方 OpenAI Python SDK，并通过 `base_url` 支持 OpenAI-compatible 服务。
 
-The prompt is stored in `prompts/evaluate.md`. Few-shot examples are stored as JSON files under `prompts/few_shots/`.
+Prompts are split by language. The default Chinese prompt is stored in `prompts/zh-CN/evaluate.md`, and the English prompt is stored in `prompts/en/evaluate.md`. Few-shot examples are stored as JSON files under each language's `few_shots/` directory.
 
-Prompt 存放在 `prompts/evaluate.md`。few-shot 示例以 JSON 文件形式存放在 `prompts/few_shots/`。
+Prompt 按语言拆分。默认中文提示词位于 `prompts/zh-CN/evaluate.md`，英文提示词位于 `prompts/en/evaluate.md`。few-shot 示例以 JSON 文件形式存放在对应语言目录的 `few_shots/` 下。
 
 The AI response must validate against this strict schema:
 

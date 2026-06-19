@@ -22,8 +22,9 @@ def test_offline_e2e_fixture(tmp_path, monkeypatch):
         ai_response_path=Path("tests/fixtures/ai/accept.json"),
         fetch_fixture_path=Path("tests/fixtures/markdown/queue-latency.md"),
         crawler4ai_enabled=False,
-        prompt_path=Path("prompts/evaluate.md"),
-        few_shot_dir=Path("prompts/few_shots"),
+        prompt_language="zh-CN",
+        prompt_path=Path("prompts/zh-CN/evaluate.md"),
+        few_shot_dir=Path("prompts/zh-CN/few_shots"),
     )
     conn = db.connect(state_db)
     db.migrate(conn)
