@@ -1,0 +1,6 @@
+sources: []
+manual_urls:
+  - title: "How We Debugged Queue Latency"
+    url: "https://example.com/blog/queue-latency"
+    tags: ["Performance"]
+

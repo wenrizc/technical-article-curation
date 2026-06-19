@@ -1,0 +1,16 @@
+{
+  "decision": "accept",
+  "confidence": "high",
+  "dimensions": {
+    "工程价值": "high",
+    "技术深度": "high",
+    "原创性": "high",
+    "可复用性": "high",
+    "可读性": "high"
+  },
+  "summary": "文章复盘生产队列延迟问题，解释指标、取舍和优化方向。",
+  "tags": ["Performance", "Incident Review"],
+  "recommendation_reason": "包含真实工程问题、排查过程和可复用的延迟治理思路。",
+  "full_reasoning": "正文有生产指标、方案比较和边界条件，满足长期工程价值。"
+}
+

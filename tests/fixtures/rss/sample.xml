@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+  <channel>
+    <title>Fixture Engineering Blog</title>
+    <link>https://example.com</link>
+    <item>
+      <title>How We Debugged Queue Latency</title>
+      <link>https://example.com/blog/queue-latency?utm_source=test</link>
+    </item>
+  </channel>
+</rss>
+
