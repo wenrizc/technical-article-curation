@@ -1,0 +1,38 @@
+[project]
+name = "technical-article-curation"
+version = "0.1.0"
+description = "AI-assisted technical article curation pipeline"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4>=4.12.0",
+    "feedparser>=6.0.11",
+    "markdownify>=0.13.1",
+    "openai>=2.0.0",
+    "pydantic>=2.8.0",
+    "pyyaml>=6.0.2",
+    "requests>=2.32.0",
+    "typer>=0.12.5",
+]
+
+[project.optional-dependencies]
+crawler = [
+    "crawl4ai>=0.4.0",
+]
+test = [
+    "pytest>=8.3.0",
+]
+
+[project.scripts]
+tac = "tac.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tac"]
