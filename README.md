@@ -28,6 +28,8 @@ uv run tac run
 - `tac fetch`: fetch and clean article Markdown.
 - `tac evaluate`: evaluate fetched articles with AI.
 - `tac publish`: publish accepted articles.
+- `tac report sources`: report latest RSS source check states.
+- `tac report failures`: report latest fetch and evaluation failures.
 - `tac run`: run the full pipeline.
 
 `fetch`, `evaluate`, and `run` support `--limit`.
@@ -43,7 +45,9 @@ Runtime configuration is read from environment variables.
 - `TAC_SOURCES_PATH`: source config path, default `config/sources.yaml`.
 - `TAC_PUBLIC_DIR`: publish output directory, default `public`.
 - `TAC_MAX_RETRY`: max retry count, default `3`.
-- `TAC_CRAWLER4AI_ENABLED`: enabled by default. Set to `false`, `0`, `no`, `off`, or `disabled` to skip Crawler4AI and use `requests + BeautifulSoup + markdownify` directly.
+- `TAC_CRAWLER4AI_ENABLED`: enabled by default. Production article fetching uses Crawler4AI only; disabling it is intended for tests or fixture-driven runs.
+- `TAC_FETCH_DELAY_SECONDS`: delay after each article fetch attempt, default `1`.
+- `TAC_EVALUATION_MAX_ATTEMPTS`: max AI evaluation attempts per article, default `3`.
 - `TAC_PROMPT_LANGUAGE`: prompt language, default `zh-CN`; set to `en` for English summaries and reasons.
 - `TAC_PROMPT_PATH`: optional explicit prompt path.
 - `TAC_FEW_SHOT_DIR`: optional explicit few-shot directory.

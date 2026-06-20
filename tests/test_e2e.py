@@ -22,6 +22,8 @@ def test_offline_e2e_fixture(tmp_path, monkeypatch):
         ai_response_path=Path("tests/fixtures/ai/accept.json"),
         fetch_fixture_path=Path("tests/fixtures/markdown/queue-latency.md"),
         crawler4ai_enabled=False,
+        fetch_delay_seconds=0,
+        evaluation_max_attempts=3,
         prompt_language="zh-CN",
         prompt_path=Path("prompts/zh-CN/evaluate.md"),
         few_shot_dir=Path("prompts/zh-CN/few_shots"),

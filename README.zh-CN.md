@@ -28,6 +28,8 @@ uv run tac run
 - `tac fetch`：抓取并清洗文章 Markdown。
 - `tac evaluate`：使用 AI 评估已抓取文章。
 - `tac publish`：发布已收录文章。
+- `tac report sources`：查看最近 RSS 信源检查状态。
+- `tac report failures`：查看最新抓取失败和评估失败。
 - `tac run`：执行完整流水线。
 
 `fetch`、`evaluate` 和 `run` 支持 `--limit`，便于小批量运行。
@@ -43,7 +45,9 @@ uv run tac run
 - `TAC_SOURCES_PATH`：信源配置路径，默认 `config/sources.yaml`。
 - `TAC_PUBLIC_DIR`：发布目录，默认 `public`。
 - `TAC_MAX_RETRY`：最大重试次数，默认 `3`。
-- `TAC_CRAWLER4AI_ENABLED`：默认启用。设置为 `false`、`0`、`no`、`off` 或 `disabled` 时跳过 Crawler4AI，直接使用 `requests + BeautifulSoup + markdownify` 回退抓取。
+- `TAC_CRAWLER4AI_ENABLED`：默认启用。生产文章抓取只使用 Crawler4AI；关闭它主要用于测试或 fixture 驱动运行。
+- `TAC_FETCH_DELAY_SECONDS`：每次文章抓取后等待的秒数，默认 `1`。
+- `TAC_EVALUATION_MAX_ATTEMPTS`：每篇文章 AI 评估最多尝试次数，默认 `3`。
 - `TAC_PROMPT_LANGUAGE`：提示词语言，默认 `zh-CN`；设置为 `en` 时输出英文摘要和推荐理由。
 - `TAC_PROMPT_PATH`：可选的显式提示词路径。
 - `TAC_FEW_SHOT_DIR`：可选的显式 few-shot 目录。

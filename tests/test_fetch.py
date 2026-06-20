@@ -1,40 +1,55 @@
-from tac.fetch import fetch_url
+from tac import db
+from tac.config import Settings
+from tac.fetch import FetchError, fetch_pending, fetch_url
 
 
-class FakeResponse:
-    status_code = 200
-    url = "https://example.com/article"
-    encoding = "utf-8"
-    apparent_encoding = "utf-8"
-    text = "<html><body><article><h1>Title</h1><p>Body</p></article></body></html>"
-
-    def raise_for_status(self):
-        return None
+def test_fetch_url_fails_when_crawler4ai_disabled():
+    try:
+        fetch_url("https://example.com/article", crawler4ai_enabled=False)
+    except FetchError as exc:
+        assert "disabled" in str(exc)
+    else:
+        raise AssertionError("expected FetchError")
 
 
-class FakeSession:
-    last_headers = None
+def test_fetch_pending_records_crawler4ai_failure(tmp_path, monkeypatch):
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    article_id, _, _ = db.add_candidate(
+        conn,
+        title="Title",
+        url="https://example.com/article",
+        source_name="s",
+    )
 
-    def __init__(self):
-        self.headers = {}
+    settings = Settings(
+        state_db=tmp_path / "state.db",
+        sources_path=tmp_path / "sources.yaml",
+        public_dir=tmp_path / "public",
+        max_retry=3,
+        model="fixture-model",
+        base_url="https://example.invalid/v1",
+        api_key=None,
+        ai_response_path=None,
+        fetch_fixture_path=None,
+        crawler4ai_enabled=True,
+        fetch_delay_seconds=0,
+        evaluation_max_attempts=3,
+        prompt_language="zh-CN",
+        prompt_path=tmp_path / "evaluate.md",
+        few_shot_dir=tmp_path / "few_shots",
+    )
 
-    def get(self, url, timeout, allow_redirects):
-        FakeSession.last_headers = dict(self.headers)
-        assert timeout == (10, 30)
-        assert allow_redirects is True
-        return FakeResponse()
+    def fail(url, *, crawler4ai_enabled=True):
+        raise FetchError("crawler4ai returned no markdown")
 
+    monkeypatch.setattr("tac.fetch.fetch_url", fail)
 
-def test_fetch_url_can_disable_crawler4ai_and_use_requests_fallback(monkeypatch):
-    def fail_if_called(url):
-        raise AssertionError("crawler4ai should not be called when disabled")
+    result = fetch_pending(settings, conn)
+    fetch = conn.execute("SELECT * FROM fetches WHERE article_id = ?", (article_id,)).fetchone()
+    article = conn.execute("SELECT * FROM articles WHERE id = ?", (article_id,)).fetchone()
 
-    monkeypatch.setattr("tac.fetch._fetch_with_crawler4ai", fail_if_called)
-    monkeypatch.setattr("tac.fetch.requests.Session", FakeSession)
-
-    result = fetch_url("https://example.com/article", crawler4ai_enabled=False)
-
-    assert result.metadata["crawler"] == "requests+beautifulsoup+markdownify"
-    assert "Mozilla/5.0" in FakeSession.last_headers["User-Agent"]
-    assert "Title" in result.markdown
-
+    assert result["failed"] == 1
+    assert fetch["status"] == "failed"
+    assert "no markdown" in fetch["error"]
+    assert article["status"] == "candidate"

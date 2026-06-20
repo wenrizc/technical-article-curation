@@ -17,6 +17,8 @@ class Settings:
     ai_response_path: Path | None
     fetch_fixture_path: Path | None
     crawler4ai_enabled: bool
+    fetch_delay_seconds: float
+    evaluation_max_attempts: int
     prompt_language: str
     prompt_path: Path
     few_shot_dir: Path
@@ -71,6 +73,8 @@ def get_settings() -> Settings:
             else None
         ),
         crawler4ai_enabled=_bool_from_env("TAC_CRAWLER4AI_ENABLED", True),
+        fetch_delay_seconds=float(os.environ.get("TAC_FETCH_DELAY_SECONDS", "1")),
+        evaluation_max_attempts=int(os.environ.get("TAC_EVALUATION_MAX_ATTEMPTS", "3")),
         prompt_language=prompt_language,
         prompt_path=_path_from_env("TAC_PROMPT_PATH", f"prompts/{prompt_language}/evaluate.md"),
         few_shot_dir=_path_from_env("TAC_FEW_SHOT_DIR", f"prompts/{prompt_language}/few_shots"),

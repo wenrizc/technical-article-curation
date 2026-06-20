@@ -13,6 +13,8 @@ from .fetch import fetch_pending
 from .publish import publish_public
 
 app = typer.Typer(no_args_is_help=True)
+report_app = typer.Typer(no_args_is_help=True)
+app.add_typer(report_app, name="report")
 
 
 def _conn():
@@ -22,6 +24,10 @@ def _conn():
 
 def _echo(result: dict) -> None:
     typer.echo(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+def _rows(rows) -> list[dict]:
+    return [dict(row) for row in rows]
 
 
 @app.command()
@@ -68,6 +74,22 @@ def publish() -> None:
     db.migrate(conn)
     result = publish_public(settings, conn)
     _echo(result)
+
+
+@report_app.command("sources")
+def report_sources() -> None:
+    """Report latest RSS source check states."""
+    _, conn = _conn()
+    db.migrate(conn)
+    _echo({"sources": _rows(db.source_state_report(conn))})
+
+
+@report_app.command("failures")
+def report_failures() -> None:
+    """Report latest fetch and evaluation failures."""
+    _, conn = _conn()
+    db.migrate(conn)
+    _echo({"failures": _rows(db.failure_report(conn))})
 
 
 @app.command()

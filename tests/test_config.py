@@ -32,3 +32,13 @@ def test_prompt_language_rejects_unknown_value(monkeypatch):
 
     with pytest.raises(ValueError, match="TAC_PROMPT_LANGUAGE"):
         get_settings()
+
+
+def test_robustness_settings_from_env(monkeypatch):
+    monkeypatch.setenv("TAC_FETCH_DELAY_SECONDS", "0.25")
+    monkeypatch.setenv("TAC_EVALUATION_MAX_ATTEMPTS", "5")
+
+    settings = get_settings()
+
+    assert settings.fetch_delay_seconds == 0.25
+    assert settings.evaluation_max_attempts == 5

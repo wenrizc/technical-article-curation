@@ -86,7 +86,7 @@
 - `fetch`：文章抓取和 Markdown 提取。
 - `evaluate`：使用 OpenAI SDK 和 Pydantic 校验进行 AI 评估。
 - `publish`：公开 JSON 和 Markdown 生成。
-- `utils`：URL 归一化、标题归一化、slug 和时间工具。
+- `utils`：URL 归一化、slug 和时间工具。
 
 ## 命令行
 
@@ -97,6 +97,8 @@ CLI 入口是 `tac`。
 - `tac fetch`：抓取并清洗候选文章。
 - `tac evaluate`：使用 AI 评估已抓取文章。
 - `tac publish`：将已收录文章发布到 `public/`。
+- `tac report sources`：查看最近 RSS 信源检查状态。
+- `tac report failures`：查看最新抓取失败和评估失败。
 - `tac run`：串联执行迁移、发现、抓取、评估和发布。
 
 `fetch`、`evaluate` 和 `run` 支持 `--limit`，便于安全地小批量运行。
@@ -112,18 +114,26 @@ CLI 入口是 `tac`。
 - `TAC_SOURCES_PATH`：信源配置路径，默认 `config/sources.yaml`。
 - `TAC_PUBLIC_DIR`：发布目录，默认 `public`。
 - `TAC_MAX_RETRY`：最大重试次数，默认 `3`。
-- `TAC_CRAWLER4AI_ENABLED`：默认启用；设置为 `false`、`0`、`no`、`off` 或 `disabled` 时直接使用回退抓取。
+- `TAC_CRAWLER4AI_ENABLED`：默认启用。生产文章抓取只使用 Crawler4AI；关闭它主要用于测试或 fixture 驱动运行。
+- `TAC_FETCH_DELAY_SECONDS`：每次文章抓取后等待的秒数，默认 `1`。
+- `TAC_EVALUATION_MAX_ATTEMPTS`：每篇文章 AI 评估最多尝试次数，默认 `3`。
 - `TAC_PROMPT_LANGUAGE`：提示词语言，默认 `zh-CN`；设置为 `en` 时输出英文摘要和推荐理由。
 - `TAC_PROMPT_PATH`：可选的显式提示词路径。
 - `TAC_FEW_SHOT_DIR`：可选的显式 few-shot 目录。
 - `TAC_AI_RESPONSE_PATH`：测试用固定 AI JSON 响应文件。
 - `TAC_FETCH_FIXTURE_PATH`：测试用固定 Markdown 内容。
 
+## 发现
+
+RSS/Atom 发现使用带重试能力的 `requests.Session` 处理临时 HTTP 失败。每个信源的最新 `ETag` 和 `Last-Modified` 会记录到 SQLite，后续运行会发送条件请求头。遇到 `304 Not Modified` 时跳过该信源解析。
+
+信源级失败会单独记录，不会污染文章状态，也不会阻止手动 URL 或其他信源继续处理。
+
 ## 抓取
 
-抓取阶段在安装可选 `crawler` extra 时默认优先使用 Crawler4AI。如果 Crawler4AI 被禁用或执行失败，系统回退到 `requests + BeautifulSoup + markdownify`。
+生产文章抓取只使用 Crawler4AI。测试运行仍可通过 `TAC_FETCH_FIXTURE_PATH` 注入固定 Markdown 内容。
 
-回退抓取器会携带常见浏览器请求头、跟随重定向、进行少量重试、移除常见非正文元素，并将主体内容转换为 Markdown。
+如果 Crawler4AI 返回空 Markdown、抛出异常、不可用，或在没有 fixture 的情况下被关闭，本次抓取会在 `fetches` 中记录为失败。抓取失败不会改变文章的内容评估状态。
 
 ## 评估
 
@@ -143,6 +153,8 @@ AI 响应必须通过以下严格 schema 校验：
 
 只有 `decision=accept` 且 `confidence=high` 的文章会自动收录。
 
+评估失败会记录到 `evaluation_failures`，不会写入 `fetches`，也不会修改文章状态。如果模型返回空内容、非法 JSON，或 JSON 无法通过 Pydantic 校验，评估器会最多按 `TAC_EVALUATION_MAX_ATTEMPTS` 重试，并把上一次原始输出和具体解析/校验错误发回模型修正。
+
 ## 存储
 
 内部状态存储在 SQLite 中，默认路径为 `data/state.db`。
@@ -151,9 +163,13 @@ AI 响应必须通过以下严格 schema 校验：
 
 核心表：
 
-- `articles`：文章身份、来源、归一化 URL/标题、slug、状态、重试次数和时间戳。
+- `articles`：文章身份、来源、归一化 URL、slug、状态、重试次数和时间戳。
 - `fetches`：抓取状态、Markdown 正文、错误和抓取元数据。
 - `evaluations`：AI 判断、置信度、维度、公开字段、内部判断依据、模型和原始 JSON。
+- `source_state`：最近 RSS 信源检查状态和条件请求字段。
+- `evaluation_failures`：评估失败记录，包括错误、尝试次数和最后一次模型原始返回。
+
+`articles.status` 只表示内容评估状态：`candidate`、`accepted`、`rejected` 或 `low_confidence`。流水线失败状态从 `fetches`、`source_state` 和 `evaluation_failures` 推导。
 
 SQLite 是内部事实来源。公开 JSON 和 Markdown 是派生产物。
 

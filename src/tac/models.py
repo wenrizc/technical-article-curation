@@ -10,9 +10,7 @@ class ArticleStatus(str, Enum):
     candidate = "candidate"
     accepted = "accepted"
     rejected = "rejected"
-    duplicate = "duplicate"
     low_confidence = "low_confidence"
-    failed = "failed"
 
 
 class Decision(str, Enum):
@@ -114,4 +112,3 @@ class CandidateArticle(BaseModel):
     url: str
     source_name: str
     source_tags: list[str] = Field(default_factory=list)
-

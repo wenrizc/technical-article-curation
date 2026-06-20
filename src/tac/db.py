@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Iterable
 
 from .models import ArticleStatus, EvaluationResult
-from .utils import normalize_title, normalize_url, source_title_slug, utc_now_iso
+from .utils import normalize_url, source_title_slug, utc_now_iso
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
@@ -51,19 +51,44 @@ def latest_schema_versions(conn: sqlite3.Connection) -> list[str]:
     return [row["version"] for row in rows]
 
 
-def find_existing(
-    conn: sqlite3.Connection, normalized_url: str, normalized_title: str
-) -> sqlite3.Row | None:
+def get_source_state(conn: sqlite3.Connection, source_name: str) -> sqlite3.Row | None:
     return conn.execute(
+        "SELECT * FROM source_state WHERE source_name = ?",
+        (source_name,),
+    ).fetchone()
+
+
+def record_source_state(
+    conn: sqlite3.Connection,
+    *,
+    source_name: str,
+    etag: str | None,
+    modified: str | None,
+    last_status: str,
+    last_error: str | None = None,
+) -> None:
+    conn.execute(
         """
-        SELECT * FROM articles
-        WHERE normalized_url = ? OR normalized_title = ?
-        ORDER BY
-            CASE WHEN status = 'accepted' THEN 0 ELSE 1 END,
-            id ASC
-        LIMIT 1
+        INSERT INTO source_state(
+            source_name, etag, modified, last_status, last_error, checked_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(source_name) DO UPDATE SET
+            etag = excluded.etag,
+            modified = excluded.modified,
+            last_status = excluded.last_status,
+            last_error = excluded.last_error,
+            checked_at = excluded.checked_at
         """,
-        (normalized_url, normalized_title),
+        (source_name, etag, modified, last_status, last_error, utc_now_iso()),
+    )
+    conn.commit()
+
+
+def find_existing(conn: sqlite3.Connection, normalized_url: str) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM articles WHERE normalized_url = ? ORDER BY id ASC LIMIT 1",
+        (normalized_url,),
     ).fetchone()
 
 
@@ -83,14 +108,12 @@ def add_candidate(
     source_tags: Iterable[str] = (),
 ) -> tuple[int, ArticleStatus, bool]:
     normalized_url = normalize_url(url)
-    normalized_title = normalize_title(title or url)
     now = utc_now_iso()
-    existing = find_existing(conn, normalized_url, normalized_title)
-    if existing and existing["normalized_url"] == normalized_url:
+    existing = find_existing(conn, normalized_url)
+    if existing:
         return int(existing["id"]), ArticleStatus(existing["status"]), False
 
-    duplicate_of = int(existing["id"]) if existing else None
-    status = ArticleStatus.duplicate if duplicate_of else ArticleStatus.candidate
+    status = ArticleStatus.candidate
     slug = source_title_slug(source_name, title or url, normalized_url, exists=False)
     if slug_exists(conn, slug):
         slug = source_title_slug(source_name, title or url, normalized_url, exists=True)
@@ -98,20 +121,18 @@ def add_candidate(
     cur = conn.execute(
         """
         INSERT INTO articles(
-            source_name, title, url, normalized_url, normalized_title, slug,
-            status, retry_count, duplicate_of, created_at, updated_at, source_tags
+            source_name, title, url, normalized_url, slug,
+            status, retry_count, created_at, updated_at, source_tags
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
         """,
         (
             source_name,
             title or url,
             url,
             normalized_url,
-            normalized_title,
             slug,
             status.value,
-            duplicate_of,
             now,
             now,
             json.dumps(list(source_tags), ensure_ascii=False),
@@ -125,7 +146,7 @@ def articles_ready_for_fetch(conn: sqlite3.Connection, max_retry: int) -> list[s
     return conn.execute(
         """
         SELECT * FROM articles
-        WHERE status IN ('candidate', 'failed')
+        WHERE status = 'candidate'
           AND retry_count < ?
           AND NOT EXISTS (
               SELECT 1 FROM fetches
@@ -201,10 +222,28 @@ def record_failure(conn: sqlite3.Connection, article_id: int, error: str) -> Non
     conn.execute(
         """
         UPDATE articles
-        SET status = 'failed', retry_count = retry_count + 1, updated_at = ?, error = ?
+        SET retry_count = retry_count + 1, updated_at = ?, error = ?
         WHERE id = ?
         """,
         (now, error, article_id),
+    )
+    conn.commit()
+
+
+def record_evaluation_failure(
+    conn: sqlite3.Connection,
+    article_id: int,
+    *,
+    error: str,
+    attempts: int,
+    raw_response: str | None,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO evaluation_failures(article_id, failed_at, error, attempts, raw_response)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (article_id, utc_now_iso(), error, attempts, raw_response),
     )
     conn.commit()
 
@@ -283,5 +322,53 @@ def accepted_articles_for_publish(conn: sqlite3.Connection) -> list[sqlite3.Row]
               WHERE article_id = a.id
           )
         ORDER BY a.collected_at DESC, a.id DESC
+        """
+    ).fetchall()
+
+
+def source_state_report(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    return conn.execute(
+        """
+        SELECT source_name, last_status, last_error, checked_at
+        FROM source_state
+        ORDER BY source_name ASC
+        """
+    ).fetchall()
+
+
+def failure_report(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    return conn.execute(
+        """
+        SELECT
+            a.id AS article_id,
+            a.title,
+            a.url,
+            'fetch' AS stage,
+            f.error AS error
+        FROM fetches f
+        JOIN articles a ON a.id = f.article_id
+        WHERE f.status = 'failed'
+          AND f.id = (
+              SELECT MAX(f2.id) FROM fetches f2
+              WHERE f2.article_id = f.article_id
+          )
+        UNION ALL
+        SELECT
+            a.id AS article_id,
+            a.title,
+            a.url,
+            'evaluation' AS stage,
+            ef.error AS error
+        FROM evaluation_failures ef
+        JOIN articles a ON a.id = ef.article_id
+        WHERE NOT EXISTS (
+            SELECT 1 FROM evaluations e
+            WHERE e.article_id = ef.article_id
+        )
+          AND ef.id = (
+              SELECT MAX(ef2.id) FROM evaluation_failures ef2
+              WHERE ef2.article_id = ef.article_id
+          )
+        ORDER BY article_id ASC, stage ASC
         """
     ).fetchall()

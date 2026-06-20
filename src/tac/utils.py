@@ -45,13 +45,6 @@ def normalize_url(url: str) -> str:
     return urlunsplit((scheme, netloc, path, query, ""))
 
 
-def normalize_title(title: str) -> str:
-    title = unicodedata.normalize("NFKC", title).strip().lower()
-    title = re.sub(r"\s+", " ", title)
-    title = re.sub(r"[^\w\u4e00-\u9fff ]+", "", title)
-    return title.strip()
-
-
 def slugify(text: str) -> str:
     text = unicodedata.normalize("NFKD", text).lower()
     text = re.sub(r"[^\w\u4e00-\u9fff]+", "-", text)

@@ -86,7 +86,7 @@ Main modules:
 - `fetch`: article fetching and Markdown extraction.
 - `evaluate`: AI evaluation with OpenAI SDK and Pydantic validation.
 - `publish`: public JSON and Markdown generation.
-- `utils`: URL normalization, title normalization, slug helpers, and time helpers.
+- `utils`: URL normalization, slug helpers, and time helpers.
 
 ## CLI
 
@@ -97,6 +97,8 @@ The CLI entry point is `tac`.
 - `tac fetch`: fetch and clean candidate articles.
 - `tac evaluate`: evaluate fetched articles with AI.
 - `tac publish`: publish accepted articles to `public/`.
+- `tac report sources`: report latest RSS source check states.
+- `tac report failures`: report latest fetch and evaluation failures.
 - `tac run`: run migrate, discover, fetch, evaluate, and publish.
 
 `fetch`, `evaluate`, and `run` support `--limit` for safer incremental operation.
@@ -112,18 +114,26 @@ Configuration is provided through environment variables.
 - `TAC_SOURCES_PATH`: source configuration path, default `config/sources.yaml`.
 - `TAC_PUBLIC_DIR`: publish output directory, default `public`.
 - `TAC_MAX_RETRY`: max retry count, default `3`.
-- `TAC_CRAWLER4AI_ENABLED`: enabled by default; set to `false`, `0`, `no`, `off`, or `disabled` to use fallback fetching directly.
+- `TAC_CRAWLER4AI_ENABLED`: enabled by default. Production article fetching uses Crawler4AI only; disabling it is intended for tests or fixture-driven runs.
+- `TAC_FETCH_DELAY_SECONDS`: delay after each article fetch attempt, default `1`.
+- `TAC_EVALUATION_MAX_ATTEMPTS`: max AI evaluation attempts per article, default `3`.
 - `TAC_PROMPT_LANGUAGE`: prompt language, default `zh-CN`; set to `en` for English summaries and reasons.
 - `TAC_PROMPT_PATH`: optional explicit prompt path.
 - `TAC_FEW_SHOT_DIR`: optional explicit few-shot directory.
 - `TAC_AI_RESPONSE_PATH`: test-only fixed AI JSON response.
 - `TAC_FETCH_FIXTURE_PATH`: test-only fixed Markdown content.
 
+## Discovery
+
+RSS/Atom discovery uses a `requests.Session` with retry support for transient HTTP failures. Each source records its latest `ETag` and `Last-Modified` values in SQLite and sends conditional request headers on later runs. A `304 Not Modified` response skips parsing for that source.
+
+Source-level failures are recorded separately from article state, so one broken RSS feed does not block manual URLs or other sources.
+
 ## Fetching
 
-The fetch stage defaults to Crawler4AI when the optional `crawler` extra is installed. If Crawler4AI is disabled or fails, the system falls back to `requests + BeautifulSoup + markdownify`.
+Production article fetching uses Crawler4AI only. Test runs can still use `TAC_FETCH_FIXTURE_PATH` to inject fixed Markdown content.
 
-The fallback fetcher uses browser-like headers, follows redirects, retries a small number of times, removes common non-content elements, and converts the main content to Markdown.
+If Crawler4AI returns no Markdown, raises an exception, is unavailable, or is disabled without a fixture, the fetch attempt is recorded as failed in `fetches`. Fetch failure does not change the article's content-evaluation status.
 
 ## Evaluation
 
@@ -143,6 +153,8 @@ The AI response must validate against this strict schema:
 
 Only articles with `decision=accept` and `confidence=high` are automatically accepted.
 
+Evaluation failures are recorded in `evaluation_failures` and do not write to `fetches` or change article status. If the model returns empty content, invalid JSON, or JSON that fails Pydantic validation, the evaluator retries up to `TAC_EVALUATION_MAX_ATTEMPTS` and sends the previous raw output plus the concrete parse or validation error back to the model.
+
 ## Storage
 
 Internal state is stored in SQLite, defaulting to `data/state.db`.
@@ -151,9 +163,13 @@ Migrations live in `migrations/*.sql`.
 
 Core tables:
 
-- `articles`: article identity, source, normalized URL/title, slug, status, retry count, and timestamps.
+- `articles`: article identity, source, normalized URL, slug, status, retry count, and timestamps.
 - `fetches`: fetch status, Markdown body, errors, and crawler metadata.
 - `evaluations`: AI decision, confidence, dimensions, public fields, internal reasoning, model, and raw JSON.
+- `source_state`: latest RSS source check state plus conditional request fields.
+- `evaluation_failures`: failed evaluation attempts with error, attempt count, and last raw model response.
+
+`articles.status` only represents content evaluation state: `candidate`, `accepted`, `rejected`, or `low_confidence`. Pipeline failures are derived from `fetches`, `source_state`, and `evaluation_failures`.
 
 SQLite is the internal source of truth. Published JSON and Markdown are derived artifacts.
 
