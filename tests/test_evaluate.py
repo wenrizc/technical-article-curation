@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from tac.config import Settings
 from tac.evaluate import evaluate_with_ai
 

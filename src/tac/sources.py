@@ -38,4 +38,3 @@ def manual_candidates(config: SourcesFile) -> list[CandidateArticle]:
                 )
             )
     return candidates
-

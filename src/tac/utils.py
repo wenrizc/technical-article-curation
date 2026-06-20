@@ -6,7 +6,6 @@ import unicodedata
 from datetime import UTC, datetime
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-
 TRACKING_QUERY_PREFIXES = ("utm_",)
 TRACKING_QUERY_KEYS = {
     "spm",
@@ -68,4 +67,3 @@ def short_hash(value: str, length: int = 8) -> str:
 def yaml_scalar(value: str) -> str:
     escaped = value.replace('"', '\\"')
     return f'"{escaped}"'
-

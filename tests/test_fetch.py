@@ -1,15 +1,13 @@
+import pytest
+
 from tac import db
 from tac.config import Settings
 from tac.fetch import FetchError, fetch_pending, fetch_url
 
 
 def test_fetch_url_fails_when_crawler4ai_disabled():
-    try:
+    with pytest.raises(FetchError, match="disabled"):
         fetch_url("https://example.com/article", crawler4ai_enabled=False)
-    except FetchError as exc:
-        assert "disabled" in str(exc)
-    else:
-        raise AssertionError("expected FetchError")
 
 
 def test_fetch_pending_records_crawler4ai_failure(tmp_path, monkeypatch):

@@ -60,10 +60,12 @@ AI calls use the official `openai` Python SDK. `TAC_MODEL` is passed as the mode
 
 ```powershell
 uv sync --extra test
+uv run ruff check .
+uv run ruff format .
 uv run pytest
 ```
 
-The tests use offline fixtures and do not require real network or real AI calls.
+Ruff provides linting and formatting. The tests use offline fixtures and do not require real network or real AI calls.
 
 ## Documentation
 

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+import sqlite3
+from collections.abc import Iterable
 
 import typer
 
 from . import db
-from .config import get_settings
+from .config import Settings, get_settings
 from .discover import discover_candidates
 from .evaluate import evaluate_pending
 from .fetch import fetch_pending
@@ -17,7 +18,7 @@ report_app = typer.Typer(no_args_is_help=True)
 app.add_typer(report_app, name="report")
 
 
-def _conn():
+def _conn() -> tuple[Settings, sqlite3.Connection]:
     settings = get_settings()
     return settings, db.connect(settings.state_db)
 
@@ -26,7 +27,7 @@ def _echo(result: dict) -> None:
     typer.echo(json.dumps(result, ensure_ascii=False, indent=2))
 
 
-def _rows(rows) -> list[dict]:
+def _rows(rows: Iterable[sqlite3.Row]) -> list[dict[str, object]]:
     return [dict(row) for row in rows]
 
 
@@ -50,7 +51,9 @@ def discover() -> None:
 
 
 @app.command()
-def fetch(limit: int | None = typer.Option(None, help="Maximum number of articles to fetch.")) -> None:
+def fetch(
+    limit: int | None = typer.Option(None, help="Maximum number of articles to fetch."),
+) -> None:
     """Fetch and clean candidate article Markdown."""
     settings, conn = _conn()
     db.migrate(conn)
@@ -59,7 +62,9 @@ def fetch(limit: int | None = typer.Option(None, help="Maximum number of article
 
 
 @app.command()
-def evaluate(limit: int | None = typer.Option(None, help="Maximum number of articles to evaluate.")) -> None:
+def evaluate(
+    limit: int | None = typer.Option(None, help="Maximum number of articles to evaluate."),
+) -> None:
     """Evaluate fetched articles with a strict Pydantic schema."""
     settings, conn = _conn()
     db.migrate(conn)
@@ -93,7 +98,11 @@ def report_failures() -> None:
 
 
 @app.command()
-def run(limit: int | None = typer.Option(None, help="Maximum number of articles to fetch/evaluate in this run.")) -> None:
+def run(
+    limit: int | None = typer.Option(
+        None, help="Maximum number of articles to fetch/evaluate in this run."
+    ),
+) -> None:
     """Run migrate, discover, fetch, evaluate, and publish."""
     settings, conn = _conn()
     applied = db.migrate(conn)

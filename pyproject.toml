@@ -19,6 +19,7 @@ crawler = [
 ]
 test = [
     "pytest>=8.3.0",
+    "ruff>=0.8.0",
 ]
 
 [project.scripts]
@@ -34,3 +35,32 @@ pythonpath = ["src"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tac"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "UP",
+    "B",
+    "C4",
+    "SIM",
+    "PT",
+]
+ignore = [
+    "E501",
+    "UP042",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"

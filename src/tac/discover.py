@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import sqlite3
+
 import feedparser
 from requests import Session
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from . import db
+from .config import Settings
 from .sources import load_sources, manual_candidates
-
 
 RSS_HEADERS = {
     "User-Agent": "technical-article-curation/0.1 (+https://example.invalid)",
@@ -30,7 +32,7 @@ def build_session() -> Session:
     return session
 
 
-def _conditional_headers(state) -> dict[str, str]:
+def _conditional_headers(state: sqlite3.Row | None) -> dict[str, str]:
     headers: dict[str, str] = {}
     if state:
         if state["etag"]:
@@ -40,7 +42,7 @@ def _conditional_headers(state) -> dict[str, str]:
     return headers
 
 
-def discover_candidates(settings, conn) -> dict[str, int]:
+def discover_candidates(settings: Settings, conn: sqlite3.Connection) -> dict[str, int]:
     config = load_sources(settings.sources_path)
     session = build_session()
     found = 0

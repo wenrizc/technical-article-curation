@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 
 from . import db
+from .config import Settings
 from .utils import yaml_scalar
 
 
-def _frontmatter(article, tags: list[str]) -> str:
+def _frontmatter(article: sqlite3.Row, tags: list[str]) -> str:
     tag_lines = "\n".join(f"  - {yaml_scalar(tag)}" for tag in tags)
     return (
         "---\n"
@@ -21,7 +23,7 @@ def _frontmatter(article, tags: list[str]) -> str:
     )
 
 
-def _source_block(article, fetched_at: str) -> str:
+def _source_block(article: sqlite3.Row, fetched_at: str) -> str:
     return (
         "> 来源信息\n"
         f">\n> - 来源：{article['source_name']}\n"
@@ -30,7 +32,9 @@ def _source_block(article, fetched_at: str) -> str:
     )
 
 
-def _public_record(article, tags: list[str], dimensions: dict) -> dict:
+def _public_record(
+    article: sqlite3.Row, tags: list[str], dimensions: dict[str, object]
+) -> dict[str, object]:
     slug = article["slug"]
     return {
         "slug": slug,
@@ -46,7 +50,7 @@ def _public_record(article, tags: list[str], dimensions: dict) -> dict:
     }
 
 
-def publish_public(settings, conn) -> dict[str, int]:
+def publish_public(settings: Settings, conn: sqlite3.Connection) -> dict[str, int]:
     public_dir: Path = settings.public_dir
     articles_dir = public_dir / "articles"
     articles_dir.mkdir(parents=True, exist_ok=True)
@@ -73,4 +77,3 @@ def publish_public(settings, conn) -> dict[str, int]:
         encoding="utf-8",
     )
     return {"published": len(records)}
-

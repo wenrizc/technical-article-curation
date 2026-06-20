@@ -3,7 +3,6 @@ from pydantic import ValidationError
 
 from tac.models import EvaluationResult
 
-
 VALID = {
     "decision": "accept",
     "confidence": "high",
@@ -32,4 +31,3 @@ def test_evaluation_result_rejects_missing_field():
     data.pop("full_reasoning")
     with pytest.raises(ValidationError):
         EvaluationResult.model_validate(data)
-

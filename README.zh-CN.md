@@ -60,10 +60,12 @@ AI 调用使用官方 `openai` Python SDK。`TAC_MODEL` 作为模型名传入，
 
 ```powershell
 uv sync --extra test
+uv run ruff check .
+uv run ruff format .
 uv run pytest
 ```
 
-测试使用离线 fixture，不依赖真实网络或真实 AI 调用。
+Ruff 用于静态检查和格式化。测试使用离线 fixture，不依赖真实网络或真实 AI 调用。
 
 ## 文档
 

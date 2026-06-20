@@ -208,6 +208,8 @@ Run:
 
 ```powershell
 uv sync --extra test
+uv run ruff check .
+uv run ruff format .
 uv run pytest
 ```
 

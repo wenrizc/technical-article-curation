@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from .models import ArticleStatus, EvaluationResult
 from .utils import normalize_url, source_title_slug, utc_now_iso
@@ -93,10 +93,7 @@ def find_existing(conn: sqlite3.Connection, normalized_url: str) -> sqlite3.Row 
 
 
 def slug_exists(conn: sqlite3.Connection, slug: str) -> bool:
-    return (
-        conn.execute("SELECT 1 FROM articles WHERE slug = ?", (slug,)).fetchone()
-        is not None
-    )
+    return conn.execute("SELECT 1 FROM articles WHERE slug = ?", (slug,)).fetchone() is not None
 
 
 def add_candidate(
@@ -193,7 +190,7 @@ def record_fetch_success(
     conn: sqlite3.Connection,
     article_id: int,
     content_markdown: str,
-    metadata: dict,
+    metadata: dict[str, object],
 ) -> None:
     now = utc_now_iso()
     conn.execute(

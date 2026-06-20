@@ -14,8 +14,7 @@ def test_add_candidate_dedupes_by_normalized_url(tmp_path):
     id1, _, inserted1 = db.add_candidate(
         conn, title="A", url="https://example.com/post?utm_source=rss", source_name="s"
     )
-    # Same article reached via trailing slash and a tracking param normalizes to the
-    # same URL, so it must reuse the existing row instead of inserting a new one.
+    # 带尾斜杠和追踪参数的同一文章会归一化为同一 URL，应复用已有记录。
     id2, _, inserted2 = db.add_candidate(
         conn, title="A again", url="https://example.com/post/", source_name="s"
     )
@@ -31,7 +30,7 @@ def test_add_candidate_same_title_different_url_not_deduped(tmp_path):
     db.add_candidate(conn, title="Weekly Digest", url="https://a.example.com/1", source_name="s")
     db.add_candidate(conn, title="Weekly Digest", url="https://b.example.com/1", source_name="s")
     count = conn.execute("SELECT COUNT(*) FROM articles").fetchone()[0]
-    # Title is identical but URLs differ: both are kept (dedup is URL-only).
+    # 标题相同但 URL 不同，应都保留；当前去重只基于 URL。
     assert count == 2
 
 

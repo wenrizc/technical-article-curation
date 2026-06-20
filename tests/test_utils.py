@@ -9,7 +9,8 @@ def test_normalize_url_removes_tracking_and_default_port():
 
 
 def test_slug_collision_adds_hash():
-    slug = source_title_slug("Cloudflare", "How We Debugged X", "https://example.com/x", exists=True)
+    slug = source_title_slug(
+        "Cloudflare", "How We Debugged X", "https://example.com/x", exists=True
+    )
     assert slug.startswith("cloudflare-how-we-debugged-x-")
     assert len(slug.rsplit("-", 1)[-1]) == 8
-

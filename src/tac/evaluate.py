@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import sqlite3
+from typing import Any
 
 from openai import OpenAI
 
 from . import db
+from .config import Settings
 from .models import EvaluationResult
 
 
@@ -15,7 +18,7 @@ class EvaluationFailed(RuntimeError):
         self.raw_response = raw_response
 
 
-def load_prompt(settings) -> str:
+def load_prompt(settings: Settings) -> str:
     prompt = settings.prompt_path.read_text(encoding="utf-8")
     examples = []
     if settings.few_shot_dir.exists():
@@ -39,7 +42,7 @@ def _extract_json(text: str) -> str:
     return stripped
 
 
-def _completion_content(response) -> str:
+def _completion_content(response: Any) -> str:
     content = response.choices[0].message.content
     if not content:
         raise ValueError("empty AI response content")
@@ -75,7 +78,9 @@ def build_evaluation_messages(
     return messages
 
 
-def evaluate_with_ai(settings, *, title: str, url: str, content_markdown: str) -> tuple[EvaluationResult, str]:
+def evaluate_with_ai(
+    settings: Settings, *, title: str, url: str, content_markdown: str
+) -> tuple[EvaluationResult, str]:
     if settings.ai_response_path:
         raw = settings.ai_response_path.read_text(encoding="utf-8")
         raw_json = _extract_json(raw)
@@ -119,7 +124,9 @@ def evaluate_with_ai(settings, *, title: str, url: str, content_markdown: str) -
     )
 
 
-def evaluate_pending(settings, conn, limit: int | None = None) -> dict[str, int]:
+def evaluate_pending(
+    settings: Settings, conn: sqlite3.Connection, limit: int | None = None
+) -> dict[str, int]:
     attempted = 0
     accepted = 0
     rejected = 0

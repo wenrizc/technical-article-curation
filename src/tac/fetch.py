@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+import sqlite3
 from dataclasses import dataclass
 from time import sleep
 
 from . import db
+from .config import Settings
 
 
 @dataclass(frozen=True)
 class FetchResult:
     markdown: str
-    metadata: dict
+    metadata: dict[str, object]
 
 
 class FetchError(RuntimeError):
@@ -46,7 +48,9 @@ def fetch_url(url: str, *, crawler4ai_enabled: bool = True) -> FetchResult:
     return asyncio.run(_fetch_with_crawler4ai(url))
 
 
-def fetch_pending(settings, conn, limit: int | None = None) -> dict[str, int]:
+def fetch_pending(
+    settings: Settings, conn: sqlite3.Connection, limit: int | None = None
+) -> dict[str, int]:
     attempted = 0
     succeeded = 0
     failed = 0

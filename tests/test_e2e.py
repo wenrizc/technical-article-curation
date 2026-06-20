@@ -34,7 +34,7 @@ def test_offline_e2e_fixture(tmp_path, monkeypatch):
     discover_result = discover_candidates(settings, conn)
     assert discover_result["inserted"] == 1
     article = conn.execute("SELECT * FROM articles").fetchone()
-    markdown = open("tests/fixtures/markdown/queue-latency.md", encoding="utf-8").read()
+    markdown = Path("tests/fixtures/markdown/queue-latency.md").read_text(encoding="utf-8")
     db.record_fetch_success(conn, int(article["id"]), markdown, {"crawler": "fixture"})
 
     evaluate_result = evaluate_pending(settings, conn)
