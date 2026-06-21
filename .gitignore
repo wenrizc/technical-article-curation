@@ -1,9 +1,47 @@
-.venv/
+# Python
 __pycache__/
-.pytest_cache/
-*.pyc
+*.py[cod]
+*$py.class
+.python-version
+.venv/
+venv/
+ENV/
 
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Runtime data and generated output
 data/
 public/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Local test scratch files
 tests/fixtures/tmp/
 
+# Editor, OS, and local agent state
+.agents/
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
