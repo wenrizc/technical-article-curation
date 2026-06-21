@@ -40,6 +40,9 @@
               <option value="low_confidence">low_confidence</option>
               <option value="archived">archived</option>
             </select>
+            <select id="source-filter">
+              <option value="">全部来源</option>
+            </select>
             <label><input id="failed-only" type="checkbox" /> 只看失败</label>
           </div>
         </div>
@@ -65,6 +68,14 @@
           <span id="page-label">第 1 页</span>
           <button id="next-page">下一页</button>
         </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>最近失败</h2>
+          <button id="refresh-failures">刷新</button>
+        </div>
+        <div id="failures-list" class="list"></div>
       </section>
 
       <section class="panel">

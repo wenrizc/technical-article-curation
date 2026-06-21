@@ -60,6 +60,11 @@ def summary(conn: Annotated[sqlite3.Connection, Depends(db_conn)]) -> dict[str, 
     return articles.summary(conn)
 
 
+@router.get("/source-names")
+def source_names(conn: Annotated[sqlite3.Connection, Depends(db_conn)]) -> dict[str, list[str]]:
+    return {"items": articles.source_names(conn)}
+
+
 @router.get("/articles")
 def list_articles(
     conn: Annotated[sqlite3.Connection, Depends(db_conn)],

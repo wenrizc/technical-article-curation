@@ -137,6 +137,17 @@ def test_admin_summary_and_articles_include_archived(tmp_path):
     assert page["items"][0]["status"] == "archived"
 
 
+def test_admin_source_names(tmp_path):
+    settings = _settings(tmp_path)
+    _seed_accepted(settings)
+    app = create_app(settings)
+
+    with TestClient(app) as client:
+        response = client.get("/api/admin/source-names")
+
+    assert response.json()["items"] == ["manual"]
+
+
 def test_admin_archive_unarchive_status_update(tmp_path):
     settings = _settings(tmp_path)
     article_id = _seed_accepted(settings)

@@ -5,6 +5,7 @@ const state = {
   pageSize: 50,
   q: new URLSearchParams(location.search).get("q") || "",
   status: new URLSearchParams(location.search).get("status") || "",
+  source: new URLSearchParams(location.search).get("source") || "",
   failedOnly: new URLSearchParams(location.search).get("failed_only") === "true",
   sourcesHash: "",
 };
@@ -38,6 +39,7 @@ function updateUrl() {
   if (state.page > 1) params.set("page", String(state.page));
   if (state.q) params.set("q", state.q);
   if (state.status) params.set("status", state.status);
+  if (state.source) params.set("source", state.source);
   if (state.failedOnly) params.set("failed_only", "true");
   history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
 }
@@ -66,6 +68,16 @@ async function loadSummary() {
     .join("");
 }
 
+async function loadSourceNames() {
+  const payload = await api("/api/admin/source-names");
+  $("#source-filter").innerHTML =
+    '<option value="">全部来源</option>' +
+    payload.items
+      .map((source) => `<option value="${escapeHtml(source)}">${escapeHtml(source)}</option>`)
+      .join("");
+  $("#source-filter").value = state.source;
+}
+
 function renderArticles(page) {
   $("#articles-body").innerHTML = page.items
     .map((item) => {
@@ -88,6 +100,8 @@ function renderArticles(page) {
             <button data-action="retry-evaluate" data-id="${item.id}">eval</button>
             <button data-action="status" data-status="candidate" data-id="${item.id}">candidate</button>
             <button data-action="status" data-status="accepted" data-id="${item.id}">accept</button>
+            <button data-action="status" data-status="rejected" data-id="${item.id}">reject</button>
+            <button data-action="status" data-status="low_confidence" data-id="${item.id}">low</button>
             ${archiveButton}
           </td>
         </tr>`;
@@ -108,9 +122,25 @@ async function loadArticles() {
   });
   if (state.q) params.set("q", state.q);
   if (state.status) params.set("status", state.status);
+  if (state.source) params.set("source", state.source);
   if (state.failedOnly) params.set("failed_only", "true");
   const page = await api(`/api/admin/articles?${params}`);
   renderArticles(page);
+}
+
+async function loadFailures() {
+  const payload = await api("/api/admin/failures?page_size=8");
+  $("#failures-list").innerHTML =
+    payload.items
+      .map(
+        (item) => `
+          <div class="list-item">
+            <b>${escapeHtml(item.stage)}</b> #${item.article_id} ${escapeHtml(item.title)}<br>
+            ${escapeHtml(item.error || "")}<br>
+            <button data-action="${item.stage === "fetch" ? "retry-fetch" : "retry-evaluate"}" data-id="${item.article_id}">重试</button>
+          </div>`,
+      )
+      .join("") || '<p class="muted">暂无失败</p>';
 }
 
 async function loadJobs() {
@@ -139,7 +169,7 @@ async function pollJob(jobId) {
       await loadJobs();
       if (["succeeded", "failed", "skipped"].includes(job.status)) {
         clearInterval(timer);
-        await Promise.all([loadSummary(), loadArticles()]);
+        await Promise.all([loadSummary(), loadArticles(), loadFailures()]);
       }
     } catch (error) {
       clearInterval(timer);
@@ -196,7 +226,7 @@ async function handleArticleAction(button) {
       body: JSON.stringify({ status: button.dataset.status }),
     });
   }
-  await Promise.all([loadSummary(), loadArticles()]);
+  await Promise.all([loadSummary(), loadArticles(), loadFailures()]);
 }
 
 function escapeHtml(value) {
@@ -218,6 +248,7 @@ function debounce(fn, delay) {
 function bindEvents() {
   $("#search-input").value = state.q;
   $("#status-filter").value = state.status;
+  $("#source-filter").value = state.source;
   $("#failed-only").checked = state.failedOnly;
 
   document.querySelectorAll("[data-job]").forEach((button) => {
@@ -246,6 +277,11 @@ function bindEvents() {
     state.page = 1;
     loadArticles().catch((error) => setStatus(errorText(error)));
   });
+  $("#source-filter").addEventListener("change", (event) => {
+    state.source = event.target.value;
+    state.page = 1;
+    loadArticles().catch((error) => setStatus(errorText(error)));
+  });
   $("#failed-only").addEventListener("change", (event) => {
     state.failedOnly = event.target.checked;
     state.page = 1;
@@ -268,8 +304,20 @@ function bindEvents() {
       setStatus(errorText(error));
     }
   });
+  $("#failures-list").addEventListener("click", async (event) => {
+    const button = event.target.closest("button[data-action]");
+    if (!button) return;
+    try {
+      await handleArticleAction(button);
+    } catch (error) {
+      setStatus(errorText(error));
+    }
+  });
   $("#refresh-jobs").addEventListener("click", () => {
     loadJobs().catch((error) => setStatus(errorText(error)));
+  });
+  $("#refresh-failures").addEventListener("click", () => {
+    loadFailures().catch((error) => setStatus(errorText(error)));
   });
   $("#save-sources").addEventListener("click", async () => {
     try {
@@ -286,7 +334,8 @@ function bindEvents() {
 
 async function boot() {
   bindEvents();
-  await Promise.all([loadSummary(), loadArticles(), loadJobs(), loadSources()]);
+  await loadSourceNames();
+  await Promise.all([loadSummary(), loadArticles(), loadFailures(), loadJobs(), loadSources()]);
   setStatus("就绪");
 }
 
