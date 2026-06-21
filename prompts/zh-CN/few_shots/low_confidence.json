@@ -2,7 +2,6 @@
   "input_type": "insufficient_content",
   "output": {
     "decision": "low_confidence",
-    "confidence": "medium",
     "dimensions": {
       "工程价值": "medium",
       "技术深度": "medium",

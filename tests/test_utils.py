@@ -1,4 +1,4 @@
-from tac.utils import normalize_url, source_title_slug
+from tac.shared.utils import normalize_url, source_title_slug
 
 
 def test_normalize_url_removes_tracking_and_default_port():

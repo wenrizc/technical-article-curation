@@ -5,8 +5,8 @@ import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
-from .models import ArticleStatus, EvaluationResult
-from .utils import normalize_url, source_title_slug, utc_now_iso
+from tac.domain.models import ArticleStatus, EvaluationResult
+from tac.shared.utils import normalize_url, source_title_slug, utc_now_iso
 
 
 def connect(db_path: Path, *, busy_timeout_ms: int = 5000) -> sqlite3.Connection:
@@ -267,16 +267,15 @@ def record_evaluation(
     conn.execute(
         """
         INSERT INTO evaluations(
-            article_id, evaluated_at, decision, confidence, dimensions, summary,
+            article_id, evaluated_at, decision, dimensions, summary,
             tags, recommendation_reason, full_reasoning, model_name, raw_json
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             article_id,
             now,
             result.decision.value,
-            result.confidence.value,
             result.dimensions.model_dump_json(by_alias=True),
             result.summary,
             json.dumps(result.tags, ensure_ascii=False),
@@ -287,7 +286,7 @@ def record_evaluation(
         ),
     )
     if article and article["status"] != ArticleStatus.archived.value:
-        if result.decision.value == "accept" and result.confidence.value == "high":
+        if result.decision.value == "accept":
             status = ArticleStatus.accepted.value
             collected_at = now
         elif result.decision.value == "reject":

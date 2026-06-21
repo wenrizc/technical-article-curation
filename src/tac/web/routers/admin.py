@@ -6,17 +6,18 @@ from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
-from tac import db, pipeline
-from tac.deps import db_conn, job_manager_from_request, settings_from_request
-from tac.jobs import JobConflict, JobManager, JobNotFound, JobQueueFull
-from tac.models import ArticleStatus
-from tac.services import articles
-from tac.services.sources import (
+from tac.application import pipeline
+from tac.application.jobs import JobConflict, JobManager, JobNotFound, JobQueueFull
+from tac.application.use_cases import manage_articles as articles
+from tac.application.use_cases.manage_sources import (
     SourceConflict,
     SourceValidationError,
     read_sources_yaml,
     save_sources_yaml,
 )
+from tac.domain.models import ArticleStatus
+from tac.infrastructure.db import store as db
+from tac.web.deps import db_conn, job_manager_from_request, settings_from_request
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 

@@ -6,9 +6,9 @@ from typing import Any
 
 from openai import OpenAI
 
-from . import db
-from .config import Settings
-from .models import EvaluationResult
+from tac.domain.models import EvaluationResult
+from tac.infrastructure.db import store as db
+from tac.settings import Settings
 
 
 class EvaluationFailed(RuntimeError):
@@ -169,7 +169,7 @@ def evaluate_pending(
                 content_markdown=fetch["content_markdown"],
             )
             db.record_evaluation(conn, int(article["id"]), result, settings.model, raw_json)
-            if result.decision.value == "accept" and result.confidence.value == "high":
+            if result.decision.value == "accept":
                 accepted += 1
             elif result.decision.value == "reject":
                 rejected += 1

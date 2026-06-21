@@ -1,11 +1,10 @@
 import pytest
 from pydantic import ValidationError
 
-from tac.models import ArticleStatus, EvaluationResult
+from tac.domain.models import ArticleStatus, EvaluationResult
 
 VALID = {
     "decision": "accept",
-    "confidence": "high",
     "dimensions": {
         "工程价值": "high",
         "技术深度": "high",
@@ -29,6 +28,12 @@ def test_evaluation_result_accepts_strict_schema():
 def test_evaluation_result_rejects_missing_field():
     data = dict(VALID)
     data.pop("full_reasoning")
+    with pytest.raises(ValidationError):
+        EvaluationResult.model_validate(data)
+
+
+def test_evaluation_result_rejects_removed_confidence_field():
+    data = {**VALID, "confidence": "high"}
     with pytest.raises(ValidationError):
         EvaluationResult.model_validate(data)
 

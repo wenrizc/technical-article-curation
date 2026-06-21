@@ -5,8 +5,8 @@ import sqlite3
 from dataclasses import dataclass
 from time import sleep
 
-from . import db
-from .config import Settings
+from tac.infrastructure.db import store as db
+from tac.settings import Settings
 
 
 @dataclass(frozen=True)

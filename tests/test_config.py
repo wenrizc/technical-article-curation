@@ -1,6 +1,6 @@
 import pytest
 
-from tac.config import get_settings
+from tac.settings import get_settings
 
 
 def test_prompt_language_defaults_to_chinese(monkeypatch):

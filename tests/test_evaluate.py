@@ -1,5 +1,5 @@
-from tac.config import Settings
-from tac.evaluate import evaluate_with_ai
+from tac.application.use_cases.evaluate_articles import evaluate_with_ai
+from tac.settings import Settings
 
 
 def test_evaluate_with_ai_uses_openai_sdk(monkeypatch, tmp_path):
@@ -31,7 +31,6 @@ def test_evaluate_with_ai_uses_openai_sdk(monkeypatch, tmp_path):
     class FakeMessage:
         content = """{
           "decision": "accept",
-          "confidence": "high",
           "dimensions": {
             "工程价值": "high",
             "技术深度": "high",
@@ -64,7 +63,7 @@ def test_evaluate_with_ai_uses_openai_sdk(monkeypatch, tmp_path):
             calls["client"] = kwargs
             self.chat = FakeChat()
 
-    monkeypatch.setattr("tac.evaluate.OpenAI", FakeOpenAI)
+    monkeypatch.setattr("tac.application.use_cases.evaluate_articles.OpenAI", FakeOpenAI)
 
     result, raw_json = evaluate_with_ai(
         settings,
@@ -112,7 +111,6 @@ def test_evaluate_with_ai_retries_invalid_json_with_repair_prompt(monkeypatch, t
             "not json",
             """{
               "decision": "accept",
-              "confidence": "high",
               "dimensions": {
                 "工程价值": "high",
                 "技术深度": "high",
@@ -152,7 +150,7 @@ def test_evaluate_with_ai_retries_invalid_json_with_repair_prompt(monkeypatch, t
         def __init__(self, **kwargs):
             self.chat = FakeChat()
 
-    monkeypatch.setattr("tac.evaluate.OpenAI", FakeOpenAI)
+    monkeypatch.setattr("tac.application.use_cases.evaluate_articles.OpenAI", FakeOpenAI)
 
     result, _ = evaluate_with_ai(
         settings,
@@ -195,7 +193,6 @@ def test_evaluate_with_ai_repeats_original_request_after_api_failure(monkeypatch
     class FakeMessage:
         content = """{
           "decision": "reject",
-          "confidence": "high",
           "dimensions": {
             "工程价值": "low",
             "技术深度": "low",
@@ -229,7 +226,7 @@ def test_evaluate_with_ai_repeats_original_request_after_api_failure(monkeypatch
         def __init__(self, **kwargs):
             self.chat = FakeChat()
 
-    monkeypatch.setattr("tac.evaluate.OpenAI", FakeOpenAI)
+    monkeypatch.setattr("tac.application.use_cases.evaluate_articles.OpenAI", FakeOpenAI)
 
     result, _ = evaluate_with_ai(
         settings,

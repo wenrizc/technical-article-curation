@@ -5,8 +5,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from tac.deps import db_conn
-from tac.services import articles
+from tac.application.use_cases import manage_articles as articles
+from tac.web.deps import db_conn
 
 router = APIRouter(prefix="/api/public", tags=["public"])
 

@@ -1,8 +1,8 @@
 import pytest
 
-from tac import db
-from tac.config import Settings
-from tac.fetch import FetchError, fetch_pending, fetch_url
+from tac.application.use_cases.fetch_articles import FetchError, fetch_pending, fetch_url
+from tac.infrastructure.db import store as db
+from tac.settings import Settings
 
 
 def test_fetch_url_fails_when_crawler4ai_disabled():
@@ -41,7 +41,7 @@ def test_fetch_pending_records_crawler4ai_failure(tmp_path, monkeypatch):
     def fail(url, *, crawler4ai_enabled=True, timeout_seconds=90):
         raise FetchError("crawler4ai returned no markdown")
 
-    monkeypatch.setattr("tac.fetch.fetch_url", fail)
+    monkeypatch.setattr("tac.application.use_cases.fetch_articles.fetch_url", fail)
 
     result = fetch_pending(settings, conn)
     fetch = conn.execute("SELECT * FROM fetches WHERE article_id = ?", (article_id,)).fetchone()

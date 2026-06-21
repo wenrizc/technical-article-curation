@@ -3,12 +3,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from . import db
-from .config import Settings
-from .discover import discover_candidates
-from .evaluate import evaluate_pending
-from .fetch import fetch_pending
-from .publish import publish_public
+from tac.application.use_cases.discover_articles import discover_candidates
+from tac.application.use_cases.evaluate_articles import evaluate_pending
+from tac.application.use_cases.fetch_articles import fetch_pending
+from tac.application.use_cases.publish_articles import publish_public
+from tac.infrastructure.db import store as db
+from tac.settings import Settings
 
 
 def _with_conn(settings: Settings, fn: Callable[[Any], dict[str, Any] | list[str]]) -> Any:

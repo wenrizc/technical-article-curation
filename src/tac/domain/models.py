@@ -38,12 +38,13 @@ class Dimensions(BaseModel):
 
 class EvaluationResult(BaseModel):
     decision: Decision
-    confidence: Level
     dimensions: Dimensions
     summary: str
     tags: list[str]
     recommendation_reason: str
     full_reasoning: str
+
+    model_config = {"extra": "forbid"}
 
     @field_validator("summary", "recommendation_reason", "full_reasoning")
     @classmethod

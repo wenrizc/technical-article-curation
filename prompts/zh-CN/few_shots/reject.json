@@ -2,7 +2,6 @@
   "input_type": "marketing_release_or_shallow_news",
   "output": {
     "decision": "reject",
-    "confidence": "high",
     "dimensions": {
       "工程价值": "low",
       "技术深度": "low",

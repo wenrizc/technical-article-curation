@@ -5,8 +5,8 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Literal
 
-from tac.models import ArticleStatus
-from tac.utils import utc_now_iso
+from tac.domain.models import ArticleStatus
+from tac.shared.utils import utc_now_iso
 
 SortField = Literal["updated_at", "created_at", "collected_at", "retry_count"]
 SortOrder = Literal["asc", "desc"]

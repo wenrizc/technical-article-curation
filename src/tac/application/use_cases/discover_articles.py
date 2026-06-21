@@ -7,9 +7,9 @@ from requests import Session
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from . import db
-from .config import Settings
-from .sources import load_sources, manual_candidates
+from tac.infrastructure.db import store as db
+from tac.infrastructure.sources.yaml_loader import load_sources, manual_candidates
+from tac.settings import Settings
 
 RSS_HEADERS = {
     "User-Agent": "technical-article-curation/0.1 (+https://example.invalid)",

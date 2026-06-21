@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from tac.config import Settings
-from tac.jobs import JobConflict, JobManager, JobQueueFull, JobStatus
+from tac.application.jobs import JobConflict, JobManager, JobQueueFull, JobStatus
+from tac.settings import Settings
 
 
 def _settings(tmp_path, **overrides) -> Settings:

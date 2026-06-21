@@ -50,7 +50,6 @@ CREATE TABLE IF NOT EXISTS evaluations (
     article_id INTEGER NOT NULL,
     evaluated_at TEXT NOT NULL,
     decision TEXT NOT NULL,
-    confidence TEXT NOT NULL,
     dimensions TEXT NOT NULL,
     summary TEXT NOT NULL,
     tags TEXT NOT NULL,

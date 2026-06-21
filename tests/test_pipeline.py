@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from tac import db
-from tac.config import Settings
-from tac.pipeline import run_all, run_evaluate, run_fetch
+from tac.application.pipeline import run_all, run_evaluate, run_fetch
+from tac.infrastructure.db import store as db
+from tac.settings import Settings
 
 
 def _settings(tmp_path) -> Settings:

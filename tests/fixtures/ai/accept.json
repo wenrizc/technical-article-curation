@@ -1,6 +1,5 @@
 {
   "decision": "accept",
-  "confidence": "high",
   "dimensions": {
     "工程价值": "high",
     "技术深度": "high",
@@ -13,4 +12,3 @@
   "recommendation_reason": "包含真实工程问题、排查过程和可复用的延迟治理思路。",
   "full_reasoning": "正文有生产指标、方案比较和边界条件，满足长期工程价值。"
 }
-

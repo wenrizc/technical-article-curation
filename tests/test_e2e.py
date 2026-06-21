@@ -1,11 +1,11 @@
 import json
 from pathlib import Path
 
-from tac import db
-from tac.config import Settings
-from tac.discover import discover_candidates
-from tac.evaluate import evaluate_pending
-from tac.publish import publish_public
+from tac.application.use_cases.discover_articles import discover_candidates
+from tac.application.use_cases.evaluate_articles import evaluate_pending
+from tac.application.use_cases.publish_articles import publish_public
+from tac.infrastructure.db import store as db
+from tac.settings import Settings
 
 
 def test_offline_e2e_fixture(tmp_path, monkeypatch):
@@ -45,7 +45,6 @@ def test_offline_e2e_fixture(tmp_path, monkeypatch):
     index = json.loads((public_dir / "index.json").read_text(encoding="utf-8"))
     assert len(index) == 1
     public_keys = set(index[0])
-    assert "confidence" not in public_keys
     assert "full_reasoning" not in public_keys
     assert "status" not in public_keys
     assert index[0]["markdown_path"].endswith(".md")

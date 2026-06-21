@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from .models import CandidateArticle, SourcesFile
+from tac.domain.models import CandidateArticle, SourcesFile
 
 
 def load_sources(path: Path) -> SourcesFile:

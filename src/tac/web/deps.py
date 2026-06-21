@@ -5,9 +5,9 @@ from collections.abc import Iterator
 
 from fastapi import Request
 
-from . import db
-from .config import Settings
-from .jobs import JobManager
+from tac.application.jobs import JobManager
+from tac.infrastructure.db import store as db
+from tac.settings import Settings
 
 
 def settings_from_request(request: Request) -> Settings:

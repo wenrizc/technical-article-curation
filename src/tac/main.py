@@ -9,13 +9,13 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import db
-from .api import admin, public
-from .config import Settings, get_settings
-from .jobs import JobManager
-from .security import guard_request, new_csrf_token
+from .application.jobs import JobManager
+from .infrastructure.db import store as db
+from .settings import Settings, get_settings
+from .web.routers import admin, public
+from .web.security import guard_request, new_csrf_token
 
-ADMIN_STATIC_DIR = Path(__file__).parent / "admin_static"
+ADMIN_STATIC_DIR = Path(__file__).parent / "web" / "static"
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:

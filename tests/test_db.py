@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from tac import db
-from tac.models import ArticleStatus, EvaluationResult
-from tac.services import articles
+from tac.application.use_cases import manage_articles as articles
+from tac.domain.models import ArticleStatus, EvaluationResult
+from tac.infrastructure.db import store as db
 
 
 def _connect(tmp_path):
@@ -15,7 +15,6 @@ def _accepted_result() -> EvaluationResult:
     return EvaluationResult.model_validate(
         {
             "decision": "accept",
-            "confidence": "high",
             "dimensions": {
                 "工程价值": "high",
                 "技术深度": "high",
@@ -281,7 +280,6 @@ def test_robustness_migration_rebuilds_legacy_articles_schema(tmp_path):
             article_id INTEGER NOT NULL,
             evaluated_at TEXT NOT NULL,
             decision TEXT NOT NULL,
-            confidence TEXT NOT NULL,
             dimensions TEXT NOT NULL,
             summary TEXT NOT NULL,
             tags TEXT NOT NULL,
@@ -321,3 +319,87 @@ def test_robustness_migration_rebuilds_legacy_articles_schema(tmp_path):
     assert "normalized_title" not in columns
     assert "duplicate_of" not in columns
     assert conn.execute("SELECT COUNT(*) FROM source_state").fetchone()[0] == 0
+
+
+def test_drop_evaluation_confidence_migration_preserves_rows(tmp_path):
+    conn = db.connect(tmp_path / "state.db")
+    conn.executescript(
+        """
+        CREATE TABLE schema_migrations (
+            version TEXT PRIMARY KEY,
+            applied_at TEXT NOT NULL
+        );
+        INSERT INTO schema_migrations(version, applied_at)
+        VALUES
+            ('001_initial', '2026-01-01T00:00:00Z'),
+            ('002_robustness_state', '2026-01-01T00:00:00Z'),
+            ('003_fastapi_admin_state', '2026-01-01T00:00:00Z');
+
+        CREATE TABLE articles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_name TEXT NOT NULL,
+            title TEXT NOT NULL,
+            url TEXT NOT NULL,
+            normalized_url TEXT NOT NULL,
+            slug TEXT,
+            status TEXT NOT NULL,
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            collected_at TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            error TEXT,
+            source_tags TEXT NOT NULL DEFAULT '[]',
+            previous_status TEXT,
+            archived_at TEXT
+        );
+
+        CREATE TABLE evaluations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            article_id INTEGER NOT NULL,
+            evaluated_at TEXT NOT NULL,
+            decision TEXT NOT NULL,
+            confidence TEXT NOT NULL,
+            dimensions TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            tags TEXT NOT NULL,
+            recommendation_reason TEXT NOT NULL,
+            full_reasoning TEXT NOT NULL,
+            model_name TEXT NOT NULL,
+            raw_json TEXT NOT NULL,
+            FOREIGN KEY (article_id) REFERENCES articles(id)
+        );
+        CREATE INDEX idx_evaluations_article_id ON evaluations(article_id);
+
+        INSERT INTO articles(
+            source_name, title, url, normalized_url, status, created_at, updated_at
+        )
+        VALUES (
+            's', 'A', 'https://example.com/a', 'https://example.com/a',
+            'accepted', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'
+        );
+        INSERT INTO evaluations(
+            article_id, evaluated_at, decision, confidence, dimensions, summary,
+            tags, recommendation_reason, full_reasoning, model_name, raw_json
+        )
+        VALUES (
+            1, '2026-01-01T00:00:00Z', 'accept', 'high', '{}', '摘要',
+            '[]', '理由', '内部原因', 'fixture-model', '{}'
+        );
+        """
+    )
+    conn.commit()
+    migrations_dir = tmp_path / "migrations"
+    migrations_dir.mkdir()
+    (migrations_dir / "004_drop_evaluation_confidence.sql").write_text(
+        Path("migrations/004_drop_evaluation_confidence.sql").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    applied = db.migrate(conn, migrations_dir=migrations_dir)
+
+    columns = [row["name"] for row in conn.execute("PRAGMA table_info(evaluations)").fetchall()]
+    row = conn.execute("SELECT decision, summary FROM evaluations").fetchone()
+    assert applied == ["004_drop_evaluation_confidence"]
+    assert "confidence" not in columns
+    assert row["decision"] == "accept"
+    assert row["summary"] == "摘要"

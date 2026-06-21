@@ -4,9 +4,9 @@ import json
 import sqlite3
 from pathlib import Path
 
-from . import db
-from .config import Settings
-from .utils import atomic_write_text, yaml_scalar
+from tac.infrastructure.db import store as db
+from tac.settings import Settings
+from tac.shared.utils import atomic_write_text, yaml_scalar
 
 
 def _frontmatter(article: sqlite3.Row, tags: list[str]) -> str:

@@ -3,11 +3,11 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from tac import db
-from tac.app import create_app
-from tac.config import Settings
-from tac.models import EvaluationResult
-from tac.services import articles
+from tac.application.use_cases import manage_articles as articles
+from tac.domain.models import EvaluationResult
+from tac.infrastructure.db import store as db
+from tac.main import create_app
+from tac.settings import Settings
 
 
 def _settings(tmp_path, **overrides) -> Settings:
@@ -50,7 +50,6 @@ def _accepted_result() -> EvaluationResult:
     return EvaluationResult.model_validate(
         {
             "decision": "accept",
-            "confidence": "high",
             "dimensions": {
                 "工程价值": "high",
                 "技术深度": "high",

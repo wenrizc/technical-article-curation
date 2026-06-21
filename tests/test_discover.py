@@ -1,6 +1,6 @@
-from tac import db
-from tac.config import Settings
-from tac.discover import discover_candidates
+from tac.application.use_cases.discover_articles import discover_candidates
+from tac.infrastructure.db import store as db
+from tac.settings import Settings
 
 
 def _settings(tmp_path, sources_text=None):
@@ -85,7 +85,9 @@ def test_discover_records_source_state_and_uses_conditional_headers(tmp_path, mo
             )
         ]
     )
-    monkeypatch.setattr("tac.discover.build_session", lambda: session)
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
 
     result = discover_candidates(settings, conn)
     state = db.get_source_state(conn, "example")
@@ -109,7 +111,9 @@ def test_discover_records_304_without_parsing_entries(tmp_path, monkeypatch):
         last_status="success",
     )
     session = FakeSession([FakeResponse(status_code=304)])
-    monkeypatch.setattr("tac.discover.build_session", lambda: session)
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
 
     result = discover_candidates(settings, conn)
     state = db.get_source_state(conn, "example")
@@ -135,7 +139,9 @@ manual_urls:
     conn = db.connect(tmp_path / "state.db")
     db.migrate(conn)
     session = FakeSession([FakeResponse(status_code=500, error=RuntimeError("boom"))])
-    monkeypatch.setattr("tac.discover.build_session", lambda: session)
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
 
     result = discover_candidates(settings, conn)
     state = db.get_source_state(conn, "example")

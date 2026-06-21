@@ -22,7 +22,6 @@
 ```json
 {
   "decision": "accept | reject | low_confidence",
-  "confidence": "high | medium | low",
   "dimensions": {
     "工程价值": "high | medium | low",
     "技术深度": "high | medium | low",

@@ -9,8 +9,8 @@ from threading import RLock
 from typing import Any
 from uuid import uuid4
 
-from .config import Settings
-from .utils import utc_now_iso
+from tac.settings import Settings
+from tac.shared.utils import utc_now_iso
 
 
 class JobStatus(str, Enum):

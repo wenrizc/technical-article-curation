@@ -9,8 +9,8 @@ from urllib.parse import urlsplit
 import yaml
 from pydantic import ValidationError
 
-from tac.models import SourcesFile
-from tac.utils import atomic_write_text, short_hash
+from tac.domain.models import SourcesFile
+from tac.shared.utils import atomic_write_text, short_hash
 
 
 class SourceConflict(RuntimeError):
