@@ -363,9 +363,7 @@ def get_article_detail(conn: sqlite3.Connection, article_id: int) -> dict[str, o
     return {
         "article": article_row_to_dict(article),
         "latest_fetch": article_row_to_dict(latest_fetch) if latest_fetch else None,
-        "latest_evaluation": article_row_to_dict(latest_evaluation)
-        if latest_evaluation
-        else None,
+        "latest_evaluation": article_row_to_dict(latest_evaluation) if latest_evaluation else None,
         "latest_evaluation_failure": dict(evaluation_failure) if evaluation_failure else None,
     }
 

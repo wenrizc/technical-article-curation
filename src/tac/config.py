@@ -113,9 +113,7 @@ def get_settings() -> Settings:
         fetch_max_concurrency=_int_from_env("TAC_FETCH_MAX_CONCURRENCY", 1, minimum=1),
         evaluate_max_concurrency=_int_from_env("TAC_EVALUATE_MAX_CONCURRENCY", 1, minimum=1),
         discover_max_concurrency=_int_from_env("TAC_DISCOVER_MAX_CONCURRENCY", 2, minimum=1),
-        max_request_body_bytes=_int_from_env(
-            "TAC_MAX_REQUEST_BODY_BYTES", 1_048_576, minimum=1
-        ),
+        max_request_body_bytes=_int_from_env("TAC_MAX_REQUEST_BODY_BYTES", 1_048_576, minimum=1),
         fetch_timeout_seconds=_float_from_env("TAC_FETCH_TIMEOUT_SECONDS", 90, minimum=1),
         ai_timeout_seconds=_float_from_env("TAC_AI_TIMEOUT_SECONDS", 90, minimum=1),
         job_timeout_seconds=_float_from_env("TAC_JOB_TIMEOUT_SECONDS", 1_800, minimum=1),

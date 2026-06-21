@@ -206,7 +206,10 @@ def test_sources_update_requires_matching_hash_and_valid_yaml(tmp_path):
         invalid = client.put(
             "/api/admin/sources",
             headers=_headers(token),
-            json={"content": "sources:\n  - rss_url: ftp://bad\n", "previous_hash": current["content_hash"]},
+            json={
+                "content": "sources:\n  - rss_url: ftp://bad\n",
+                "previous_hash": current["content_hash"],
+            },
         )
         saved = client.put(
             "/api/admin/sources",
