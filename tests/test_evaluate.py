@@ -79,6 +79,7 @@ def test_evaluate_with_ai_uses_openai_sdk(monkeypatch, tmp_path):
     assert calls["client"]["base_url"] == "https://llm.example/v1"
     assert calls["create"]["model"] == "openai/test-model"
     assert calls["create"]["response_format"] == {"type": "json_object"}
+    assert calls["create"]["timeout"] == settings.ai_timeout_seconds
 
 
 def test_evaluate_with_ai_retries_invalid_json_with_repair_prompt(monkeypatch, tmp_path):

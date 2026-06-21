@@ -110,7 +110,7 @@ def evaluate_with_ai(
                 ),
                 temperature=0,
                 response_format={"type": "json_object"},
-                timeout=90,
+                timeout=settings.ai_timeout_seconds,
             )
             last_raw = _completion_content(response)
             raw_json = _extract_json(last_raw)
@@ -124,15 +124,37 @@ def evaluate_with_ai(
     )
 
 
+def _articles_for_evaluation(
+    conn: sqlite3.Connection, article_ids: list[int] | None
+) -> list[sqlite3.Row]:
+    if article_ids is None:
+        return db.articles_ready_for_evaluation(conn)
+    if not article_ids:
+        return []
+    placeholders = ",".join("?" for _ in article_ids)
+    return conn.execute(
+        f"""
+        SELECT * FROM articles
+        WHERE id IN ({placeholders})
+          AND status != 'archived'
+        ORDER BY id ASC
+        """,
+        article_ids,
+    ).fetchall()
+
+
 def evaluate_pending(
-    settings: Settings, conn: sqlite3.Connection, limit: int | None = None
+    settings: Settings,
+    conn: sqlite3.Connection,
+    limit: int | None = None,
+    article_ids: list[int] | None = None,
 ) -> dict[str, int]:
     attempted = 0
     accepted = 0
     rejected = 0
     low_confidence = 0
     failed = 0
-    for article in db.articles_ready_for_evaluation(conn):
+    for article in _articles_for_evaluation(conn, article_ids):
         if limit is not None and attempted >= limit:
             break
         fetch = db.latest_successful_fetch(conn, int(article["id"]))

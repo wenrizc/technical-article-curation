@@ -38,7 +38,7 @@ def test_fetch_pending_records_crawler4ai_failure(tmp_path, monkeypatch):
         few_shot_dir=tmp_path / "few_shots",
     )
 
-    def fail(url, *, crawler4ai_enabled=True):
+    def fail(url, *, crawler4ai_enabled=True, timeout_seconds=90):
         raise FetchError("crawler4ai returned no markdown")
 
     monkeypatch.setattr("tac.fetch.fetch_url", fail)
