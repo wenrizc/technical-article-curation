@@ -11,7 +11,6 @@ dependencies = [
     "pydantic>=2.8.0",
     "pyyaml>=6.0.2",
     "requests>=2.32.0",
-    "typer>=0.12.5",
     "uvicorn>=0.32.0",
 ]
 
@@ -24,9 +23,6 @@ test = [
     "pytest>=8.3.0",
     "ruff>=0.8.0",
 ]
-
-[project.scripts]
-tac = "tac.cli:app"
 
 [build-system]
 requires = ["hatchling"]

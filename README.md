@@ -8,31 +8,31 @@ AI-assisted technical article curation pipeline. It discovers articles from RSS/
 
 ```powershell
 uv sync --extra test
-uv run tac migrate
-uv run tac discover
-uv run tac fetch
-uv run tac evaluate
-uv run tac publish
+uv run uvicorn tac.app:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Run the full pipeline:
+Open the local admin console:
 
-```powershell
-uv run tac run
-```
+<http://127.0.0.1:8000/admin>
 
-## CLI
+The FastAPI app runs SQLite migrations on startup by default. Use the admin page to trigger discover, fetch, evaluate, publish, or the full pipeline as background jobs.
 
-- `tac migrate`: apply SQLite migrations.
-- `tac discover`: discover candidate articles.
-- `tac fetch`: fetch and clean article Markdown.
-- `tac evaluate`: evaluate fetched articles with AI.
-- `tac publish`: publish accepted articles.
-- `tac report sources`: report latest RSS source check states.
-- `tac report failures`: report latest fetch and evaluation failures.
-- `tac run`: run the full pipeline.
+## FastAPI
 
-`fetch`, `evaluate`, and `run` support `--limit`.
+The service exposes:
+
+- `/admin`: lightweight no-framework management console.
+- `/api/admin/*`: management API. It can see all articles, including `archived`.
+- `/api/public/*`: public query API. It always excludes `archived`.
+
+Main management job endpoints:
+
+- `POST /api/admin/jobs/discover`
+- `POST /api/admin/jobs/fetch`
+- `POST /api/admin/jobs/evaluate`
+- `POST /api/admin/jobs/publish`
+- `POST /api/admin/jobs/run`
+- `GET /api/admin/jobs/{job_id}`
 
 ## Configuration
 
@@ -53,6 +53,20 @@ Runtime configuration is read from environment variables.
 - `TAC_FEW_SHOT_DIR`: optional explicit few-shot directory.
 - `TAC_AI_RESPONSE_PATH`: test-only fixed AI JSON response.
 - `TAC_FETCH_FIXTURE_PATH`: test-only fixed Markdown content.
+- `TAC_AUTO_MIGRATE`: run migrations on FastAPI startup, default `true`.
+- `TAC_HTTP_MAX_CONCURRENCY`: dynamic HTTP request concurrency, default `16`.
+- `TAC_JOB_MAX_CONCURRENCY`: background job concurrency, default `1`.
+- `TAC_JOB_QUEUE_LIMIT`: queued background job limit, default `8`.
+- `TAC_FETCH_MAX_CONCURRENCY`: fetch concurrency, default `1`.
+- `TAC_EVALUATE_MAX_CONCURRENCY`: evaluation concurrency, default `1`.
+- `TAC_DISCOVER_MAX_CONCURRENCY`: RSS discovery concurrency, default `2`.
+- `TAC_MAX_REQUEST_BODY_BYTES`: max write request body size, default `1048576`.
+- `TAC_FETCH_TIMEOUT_SECONDS`: per-article fetch timeout, default `90`.
+- `TAC_AI_TIMEOUT_SECONDS`: AI request timeout, default `90`.
+- `TAC_JOB_TIMEOUT_SECONDS`: background job timeout, default `1800`.
+- `TAC_FETCH_MAX_MARKDOWN_BYTES`: fetched Markdown size limit, default `2097152`.
+- `TAC_JOB_HISTORY_LIMIT`: in-memory job history limit, default `100`.
+- `TAC_DB_BUSY_TIMEOUT_MS`: SQLite busy timeout, default `5000`.
 
 AI calls use the official `openai` Python SDK. `TAC_MODEL` is passed as the model name, and `TAC_BASE_URL` is passed to the SDK as `base_url`.
 

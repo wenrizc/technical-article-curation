@@ -77,7 +77,10 @@ The implementation is a Python package under `src/tac/`.
 
 Main modules:
 
-- `cli`: Typer command-line interface.
+- `app`: FastAPI application entry point.
+- `api`: management and public HTTP APIs.
+- `jobs`: in-memory background job state and concurrency control.
+- `pipeline`: orchestration helpers for discovery, fetching, evaluation, publishing, and full runs.
 - `config`: environment-based runtime configuration.
 - `db`: SQLite connection, migrations, and persistence helpers.
 - `models`: Pydantic models and enums.
@@ -88,20 +91,28 @@ Main modules:
 - `publish`: public JSON and Markdown generation.
 - `utils`: URL normalization, slug helpers, and time helpers.
 
-## CLI
+## FastAPI
 
-The CLI entry point is `tac`.
+The service entry point is `tac.app:app`.
 
-- `tac migrate`: apply SQLite migrations.
-- `tac discover`: discover candidate articles from configured sources.
-- `tac fetch`: fetch and clean candidate articles.
-- `tac evaluate`: evaluate fetched articles with AI.
-- `tac publish`: publish accepted articles to `public/`.
-- `tac report sources`: report latest RSS source check states.
-- `tac report failures`: report latest fetch and evaluation failures.
-- `tac run`: run migrate, discover, fetch, evaluate, and publish.
+Run locally:
 
-`fetch`, `evaluate`, and `run` support `--limit` for safer incremental operation.
+```powershell
+uv run uvicorn tac.app:app --host 127.0.0.1 --port 8000 --reload
+```
+
+- `/admin`: lightweight local management console.
+- `/api/admin/*`: management API with full article visibility, including `archived`.
+- `/api/public/*`: public API that always excludes `archived`.
+
+Management job endpoints trigger background work:
+
+- `POST /api/admin/jobs/discover`
+- `POST /api/admin/jobs/fetch`
+- `POST /api/admin/jobs/evaluate`
+- `POST /api/admin/jobs/publish`
+- `POST /api/admin/jobs/run`
+- `GET /api/admin/jobs/{job_id}`
 
 ## Runtime Configuration
 
@@ -122,6 +133,20 @@ Configuration is provided through environment variables.
 - `TAC_FEW_SHOT_DIR`: optional explicit few-shot directory.
 - `TAC_AI_RESPONSE_PATH`: test-only fixed AI JSON response.
 - `TAC_FETCH_FIXTURE_PATH`: test-only fixed Markdown content.
+- `TAC_AUTO_MIGRATE`: run SQLite migrations on FastAPI startup, default `true`.
+- `TAC_HTTP_MAX_CONCURRENCY`: dynamic HTTP request concurrency, default `16`.
+- `TAC_JOB_MAX_CONCURRENCY`: background job concurrency, default `1`.
+- `TAC_JOB_QUEUE_LIMIT`: queued background job limit, default `8`.
+- `TAC_FETCH_MAX_CONCURRENCY`: fetch concurrency, default `1`.
+- `TAC_EVALUATE_MAX_CONCURRENCY`: evaluation concurrency, default `1`.
+- `TAC_DISCOVER_MAX_CONCURRENCY`: RSS discovery concurrency, default `2`.
+- `TAC_MAX_REQUEST_BODY_BYTES`: max write request body size, default `1048576`.
+- `TAC_FETCH_TIMEOUT_SECONDS`: per-article fetch timeout, default `90`.
+- `TAC_AI_TIMEOUT_SECONDS`: AI request timeout, default `90`.
+- `TAC_JOB_TIMEOUT_SECONDS`: background job timeout, default `1800`.
+- `TAC_FETCH_MAX_MARKDOWN_BYTES`: fetched Markdown size limit, default `2097152`.
+- `TAC_JOB_HISTORY_LIMIT`: in-memory job history limit, default `100`.
+- `TAC_DB_BUSY_TIMEOUT_MS`: SQLite busy timeout, default `5000`.
 
 ## Discovery
 

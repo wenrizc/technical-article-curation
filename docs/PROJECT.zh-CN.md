@@ -77,7 +77,10 @@
 
 主要模块：
 
-- `cli`：Typer 命令行入口。
+- `app`：FastAPI 应用入口。
+- `api`：管理 API 和公开 API。
+- `jobs`：内存后台任务状态与并发控制。
+- `pipeline`：发现、抓取、评估、发布和完整运行的编排服务。
 - `config`：基于环境变量的运行配置。
 - `db`：SQLite 连接、迁移和持久化工具。
 - `models`：Pydantic 模型和枚举。
@@ -88,20 +91,28 @@
 - `publish`：公开 JSON 和 Markdown 生成。
 - `utils`：URL 归一化、slug 和时间工具。
 
-## 命令行
+## FastAPI
 
-CLI 入口是 `tac`。
+服务入口是 `tac.app:app`。
 
-- `tac migrate`：执行 SQLite 迁移。
-- `tac discover`：从配置来源发现候选文章。
-- `tac fetch`：抓取并清洗候选文章。
-- `tac evaluate`：使用 AI 评估已抓取文章。
-- `tac publish`：将已收录文章发布到 `public/`。
-- `tac report sources`：查看最近 RSS 信源检查状态。
-- `tac report failures`：查看最新抓取失败和评估失败。
-- `tac run`：串联执行迁移、发现、抓取、评估和发布。
+本地运行：
 
-`fetch`、`evaluate` 和 `run` 支持 `--limit`，便于安全地小批量运行。
+```powershell
+uv run uvicorn tac.app:app --host 127.0.0.1 --port 8000 --reload
+```
+
+- `/admin`：本地轻量管理控制台。
+- `/api/admin/*`：管理 API，可查询全部文章，包括 `archived`。
+- `/api/public/*`：公开 API，始终排除 `archived`。
+
+管理任务接口用于触发后台任务：
+
+- `POST /api/admin/jobs/discover`
+- `POST /api/admin/jobs/fetch`
+- `POST /api/admin/jobs/evaluate`
+- `POST /api/admin/jobs/publish`
+- `POST /api/admin/jobs/run`
+- `GET /api/admin/jobs/{job_id}`
 
 ## 运行配置
 
@@ -122,6 +133,20 @@ CLI 入口是 `tac`。
 - `TAC_FEW_SHOT_DIR`：可选的显式 few-shot 目录。
 - `TAC_AI_RESPONSE_PATH`：测试用固定 AI JSON 响应文件。
 - `TAC_FETCH_FIXTURE_PATH`：测试用固定 Markdown 内容。
+- `TAC_AUTO_MIGRATE`：FastAPI 启动时执行 SQLite 迁移，默认 `true`。
+- `TAC_HTTP_MAX_CONCURRENCY`：动态 HTTP 请求并发，默认 `16`。
+- `TAC_JOB_MAX_CONCURRENCY`：后台任务并发，默认 `1`。
+- `TAC_JOB_QUEUE_LIMIT`：后台任务排队长度，默认 `8`。
+- `TAC_FETCH_MAX_CONCURRENCY`：抓取并发，默认 `1`。
+- `TAC_EVALUATE_MAX_CONCURRENCY`：评估并发，默认 `1`。
+- `TAC_DISCOVER_MAX_CONCURRENCY`：RSS 发现并发，默认 `2`。
+- `TAC_MAX_REQUEST_BODY_BYTES`：写请求体大小限制，默认 `1048576`。
+- `TAC_FETCH_TIMEOUT_SECONDS`：单篇文章抓取超时，默认 `90`。
+- `TAC_AI_TIMEOUT_SECONDS`：AI 请求超时，默认 `90`。
+- `TAC_JOB_TIMEOUT_SECONDS`：后台任务总超时，默认 `1800`。
+- `TAC_FETCH_MAX_MARKDOWN_BYTES`：抓取 Markdown 大小限制，默认 `2097152`。
+- `TAC_JOB_HISTORY_LIMIT`：内存任务历史保留数量，默认 `100`。
+- `TAC_DB_BUSY_TIMEOUT_MS`：SQLite busy timeout，默认 `5000`。
 
 ## 发现
 

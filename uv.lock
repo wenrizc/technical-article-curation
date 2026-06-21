@@ -2695,7 +2695,6 @@ dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "requests" },
-    { name = "typer" },
     { name = "uvicorn" },
 ]
 
@@ -2721,7 +2720,6 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "requests", specifier = ">=2.32.0" },
     { name = "ruff", marker = "extra == 'test'", specifier = ">=0.8.0" },
-    { name = "typer", specifier = ">=0.12.5" },
     { name = "uvicorn", specifier = ">=0.32.0" },
 ]
 provides-extras = ["crawler", "test"]
