@@ -2,7 +2,7 @@
 
 ## 项目结构与模块划分
 
-核心代码位于 `src/tac/`。CLI 入口是 `src/tac/cli.py`，各阶段按职责拆分为 `discover.py`、`fetch.py`、`evaluate.py`、`publish.py` 等模块。默认源配置在 `config/sources.yaml`，数据库迁移脚本在 `migrations/`，评估提示词在 `prompts/<locale>/`，设计文档在 `docs/`。测试代码集中在 `tests/`，离线夹具放在 `tests/fixtures/`。
+核心代码位于 `src/tac/`，FastAPI 入口是 `src/tac/main.py`。代码按分层目录组织：`web/` 放 HTTP 路由、依赖、安全中间件和静态管理页；`application/` 放后台任务、流水线编排和各阶段 use case；`domain/` 放 Pydantic 模型和枚举；`infrastructure/` 放 SQLite、信源 YAML 等外部资源适配；`shared/` 放通用工具。默认源配置在 `config/sources.yaml`，数据库迁移脚本在 `migrations/`，评估提示词在 `prompts/<locale>/`，设计文档在 `docs/`。测试代码集中在 `tests/`，离线夹具放在 `tests/fixtures/`。
 
 ## 构建、测试与开发命令
 
@@ -10,14 +10,13 @@
 
 ```powershell
 uv sync --extra test
+uv run uvicorn tac.main:app --host 127.0.0.1 --port 8000 --reload
 uv run ruff check .
 uv run ruff format .
-uv run tac migrate
-uv run tac run
 uv run pytest
 ```
 
-`uv sync --extra test` 用于安装运行、测试和开发检查依赖。`uv run ruff check .` 运行静态检查，`uv run ruff format .` 统一格式化代码。`uv run tac migrate` 会初始化或升级默认的 SQLite 数据库 `data/state.db`。`uv run tac run` 执行从发现、抓取到评估和发布的完整流程。`uv run pytest` 运行全部离线测试。
+`uv sync --extra test` 用于安装运行、测试和开发检查依赖。`uv run uvicorn tac.main:app --host 127.0.0.1 --port 8000 --reload` 启动本地 FastAPI 服务，应用默认在启动时执行 SQLite 迁移，流水线阶段通过管理页或 `/api/admin/jobs/*` 后台任务触发。`uv run ruff check .` 运行静态检查，`uv run ruff format .` 统一格式化代码。`uv run pytest` 运行全部离线测试。
 
 ## 编码风格与命名约定
 

@@ -12,14 +12,14 @@
 - 抓取文章正文并清洗为 Markdown。
 - 在 AI 评估前过滤明显重复内容。
 - 使用严格 JSON Schema 和 Pydantic 校验进行质量评估。
-- 自动收录高置信度高质量文章。
+- 根据 `decision` 自动收录高质量文章。
 - 使用 SQLite 保存内部状态，支持复跑和审计。
 - 将已收录文章发布为公开 JSON 和 Markdown。
 
 ## 非目标
 
 - 不做通用新闻聚合器。
-- 当前实现不提供网页 UI 或评审后台。
+- 当前实现不提供多用户认证、角色权限或完整评审工作流。
 - 当前实现不追求覆盖所有技术来源。
 - 当前实现不以实时发布为首要目标。
 - 当前实现不提供完整版权处理或自动下架流程。
@@ -71,32 +71,26 @@
 
 ## 架构
 
-代码实现是 `src/tac/` 下的 Python 包。
+代码实现是 `src/tac/` 下的 Python 包，当前按入口层、应用层、领域层、基础设施层和共享工具分层。
 
 主要模块：
 
-- `app`：FastAPI 应用入口。
-- `api`：管理 API 和公开 API。
-- `jobs`：内存后台任务状态与并发控制。
-- `pipeline`：发现、抓取、评估、发布和完整运行的编排服务。
-- `config`：基于环境变量的运行配置。
-- `db`：SQLite 连接、迁移和持久化工具。
-- `models`：Pydantic 模型和枚举。
-- `sources`：信源配置加载。
-- `discover`：RSS/Atom 和手动 URL 候选发现。
-- `fetch`：文章抓取和 Markdown 提取。
-- `evaluate`：使用 OpenAI SDK 和 Pydantic 校验进行 AI 评估。
-- `publish`：公开 JSON 和 Markdown 生成。
-- `utils`：URL 归一化、slug 和时间工具。
+- `main`：FastAPI 应用入口和应用工厂。
+- `settings`：基于环境变量的运行配置。
+- `web`：HTTP 层，包括依赖注入、安全中间件、管理 API、公开 API 和管理页静态资源。
+- `application`：应用编排层，包括后台任务、完整流水线和各阶段 use case。
+- `domain`：Pydantic 模型、枚举和领域数据结构。
+- `infrastructure`：SQLite 持久化、信源 YAML 读取等外部资源适配。
+- `shared`：URL 归一化、slug、时间、原子写文件和 YAML 标量等通用工具。
 
 ## FastAPI
 
-服务入口是 `tac.app:app`。
+服务入口是 `tac.main:app`。
 
 本地运行：
 
 ```powershell
-uv run uvicorn tac.app:app --host 127.0.0.1 --port 8000 --reload
+uv run uvicorn tac.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 - `/admin`：本地轻量管理控制台。
@@ -167,14 +161,13 @@ AI 评估使用官方 OpenAI Python SDK，并通过 `base_url` 支持 OpenAI-com
 AI 响应必须通过以下严格 schema 校验：
 
 - `decision`：收录、拒收或低置信度。
-- `confidence`：置信度。
 - `dimensions`：工程价值、技术深度、原创性、可复用性和可读性。
 - `summary`：公开摘要。
 - `tags`：公开标签。
 - `recommendation_reason`：公开推荐理由。
 - `full_reasoning`：内部完整判断依据，不公开发布。
 
-只有 `decision=accept` 且 `confidence=high` 的文章会自动收录。
+只有 `decision=accept` 的文章会自动收录。
 
 评估失败会记录到 `evaluation_failures`，不会写入 `fetches`，也不会修改文章状态。如果模型返回空内容、非法 JSON，或 JSON 无法通过 Pydantic 校验，评估器会最多按 `TAC_EVALUATION_MAX_ATTEMPTS` 重试，并把上一次原始输出和具体解析/校验错误发回模型修正。
 
@@ -188,7 +181,7 @@ AI 响应必须通过以下严格 schema 校验：
 
 - `articles`：文章身份、来源、归一化 URL、slug、状态、重试次数和时间戳。
 - `fetches`：抓取状态、Markdown 正文、错误和抓取元数据。
-- `evaluations`：AI 判断、置信度、维度、公开字段、内部判断依据、模型和原始 JSON。
+- `evaluations`：AI 判断、维度、公开字段、内部判断依据、模型和原始 JSON。
 - `source_state`：最近 RSS 信源检查状态和条件请求字段。
 - `evaluation_failures`：评估失败记录，包括错误、尝试次数和最后一次模型原始返回。
 
@@ -219,7 +212,7 @@ SQLite 是内部事实来源。公开 JSON 和 Markdown 是派生产物。
 - `dimensions`
 - `markdown_path`
 
-公开 JSON 不得包含 `status`、`confidence`、`full_reasoning` 等内部字段。
+公开 JSON 不得包含 `status`、`full_reasoning` 等内部字段。
 
 Markdown 文件包含最小 frontmatter，并在正文顶部显示来源名称、原文链接和抓取时间。
 
