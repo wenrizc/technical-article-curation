@@ -70,13 +70,10 @@ def _prompt_language() -> str:
         "zh-cn": "zh-CN",
         "cn": "zh-CN",
         "chinese": "zh-CN",
-        "en": "en",
-        "en-us": "en",
-        "english": "en",
     }
     normalized = aliases.get(value.lower(), value)
-    if normalized not in {"zh-CN", "en"}:
-        raise ValueError("TAC_PROMPT_LANGUAGE must be one of: zh-CN, en")
+    if normalized != "zh-CN":
+        raise ValueError("TAC_PROMPT_LANGUAGE must be zh-CN")
     return normalized
 
 

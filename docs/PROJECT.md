@@ -126,7 +126,7 @@ uv run uvicorn tac.app:app --host 127.0.0.1 --port 8000 --reload
 - `TAC_CRAWLER4AI_ENABLED`：默认启用。生产文章抓取只使用 Crawler4AI；关闭它主要用于测试或 fixture 驱动运行。
 - `TAC_FETCH_DELAY_SECONDS`：每次文章抓取后等待的秒数，默认 `1`。
 - `TAC_EVALUATION_MAX_ATTEMPTS`：每篇文章 AI 评估最多尝试次数，默认 `3`。
-- `TAC_PROMPT_LANGUAGE`：提示词语言，默认 `zh-CN`；设置为 `en` 时输出英文摘要和推荐理由。
+- `TAC_PROMPT_LANGUAGE`：提示词语言，当前仅支持 `zh-CN`。
 - `TAC_PROMPT_PATH`：可选的显式提示词路径。
 - `TAC_FEW_SHOT_DIR`：可选的显式 few-shot 目录。
 - `TAC_AI_RESPONSE_PATH`：测试用固定 AI JSON 响应文件。
@@ -162,7 +162,7 @@ RSS/Atom 发现使用带重试能力的 `requests.Session` 处理临时 HTTP 失
 
 AI 评估使用官方 OpenAI Python SDK，并通过 `base_url` 支持 OpenAI-compatible 服务。
 
-Prompt 按语言拆分。默认中文提示词位于 `prompts/zh-CN/evaluate.md`，英文提示词位于 `prompts/en/evaluate.md`。few-shot 示例以 JSON 文件形式存放在对应语言目录的 `few_shots/` 下。
+默认中文提示词位于 `prompts/zh-CN/evaluate.md`。few-shot 示例以 JSON 文件形式存放在 `prompts/zh-CN/few_shots/` 下。
 
 AI 响应必须通过以下严格 schema 校验：
 
