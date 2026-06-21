@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+    <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -12,14 +12,14 @@
       <header class="topbar">
         <div>
           <p class="eyebrow">Technical Article Curation</p>
-          <h1>管理控制台</h1>
+          <h1>Admin Console</h1>
         </div>
-        <div class="status" id="runtime-status">连接中</div>
+        <div class="status" id="runtime-status">Connecting</div>
       </header>
 
-      <section class="summary-grid" id="summary-grid" aria-label="文章状态概览"></section>
+      <section class="summary-grid" id="summary-grid" aria-label="Article status summary"></section>
 
-      <section class="toolbar" aria-label="流水线任务">
+      <section class="toolbar" aria-label="Pipeline jobs">
         <button data-job="discover">Discover</button>
         <button data-job="fetch">Fetch</button>
         <button data-job="evaluate">Evaluate</button>
@@ -29,11 +29,11 @@
 
       <section class="panel">
         <div class="panel-heading">
-          <h2>所有文章</h2>
+          <h2>All Articles</h2>
           <div class="filters">
-            <input id="search-input" type="search" placeholder="搜索标题、URL、来源" />
+            <input id="search-input" type="search" placeholder="Search title, URL, or source" />
             <select id="status-filter">
-              <option value="">全部状态</option>
+              <option value="">All statuses</option>
               <option value="candidate">candidate</option>
               <option value="accepted">accepted</option>
               <option value="rejected">rejected</option>
@@ -41,55 +41,55 @@
               <option value="archived">archived</option>
             </select>
             <select id="source-filter">
-              <option value="">全部来源</option>
+              <option value="">All sources</option>
             </select>
-            <label><input id="failed-only" type="checkbox" /> 只看失败</label>
+            <label><input id="failed-only" type="checkbox" /> Failed only</label>
           </div>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>标题</th>
-                <th>来源</th>
-                <th>状态</th>
-                <th>抓取</th>
-                <th>评估</th>
-                <th>重试</th>
-                <th>更新时间</th>
-                <th>操作</th>
+                <th>Title</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th>Fetch</th>
+                <th>Evaluation</th>
+                <th>Retries</th>
+                <th>Updated</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="articles-body"></tbody>
           </table>
         </div>
         <div class="pager">
-          <button id="prev-page">上一页</button>
-          <span id="page-label">第 1 页</span>
-          <button id="next-page">下一页</button>
+          <button id="prev-page">Previous</button>
+          <span id="page-label">Page 1</span>
+          <button id="next-page">Next</button>
         </div>
       </section>
 
       <section class="panel">
         <div class="panel-heading">
-          <h2>最近失败</h2>
-          <button id="refresh-failures">刷新</button>
+          <h2>Recent Failures</h2>
+          <button id="refresh-failures">Refresh</button>
         </div>
         <div id="failures-list" class="list"></div>
       </section>
 
       <section class="panel">
         <div class="panel-heading">
-          <h2>最近任务</h2>
-          <button id="refresh-jobs">刷新</button>
+          <h2>Recent Jobs</h2>
+          <button id="refresh-jobs">Refresh</button>
         </div>
         <div id="jobs-list" class="list"></div>
       </section>
 
       <section class="panel">
         <div class="panel-heading">
-          <h2>信源 YAML</h2>
-          <button id="save-sources" class="primary">保存</button>
+          <h2>Sources YAML</h2>
+          <button id="save-sources" class="primary">Save</button>
         </div>
         <textarea id="sources-editor" spellcheck="false"></textarea>
         <p id="sources-status" class="muted"></p>
@@ -98,8 +98,8 @@
 
     <aside class="drawer" id="detail-drawer" aria-hidden="true">
       <div class="drawer-head">
-        <h2>文章详情</h2>
-        <button id="close-detail">关闭</button>
+        <h2>Article Detail</h2>
+        <button id="close-detail">Close</button>
       </div>
       <pre id="detail-content"></pre>
     </aside>

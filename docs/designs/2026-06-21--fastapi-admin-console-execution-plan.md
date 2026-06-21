@@ -40,7 +40,6 @@
 - `src/tac/config.py`
 - `.env.example`
 - `README.md`
-- `README.zh-CN.md`
 
 任务：
 
@@ -503,9 +502,7 @@
 - `src/tac/cli.py`
 - `pyproject.toml`
 - `README.md`
-- `README.zh-CN.md`
 - `docs/PROJECT.md`
-- `docs/PROJECT.zh-CN.md`
 - `tests/test_e2e.py`
 
 任务：

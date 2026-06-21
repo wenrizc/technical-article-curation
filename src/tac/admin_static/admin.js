@@ -45,23 +45,23 @@ function updateUrl() {
 }
 
 function errorText(error) {
-  if (error.status === 403) return "写请求被拒绝，请从同源 /admin 页面操作";
-  if (error.status === 409) return "操作冲突：已有任务运行或文件已变化";
-  if (error.status === 429) return "请求过多：并发或队列已满";
-  return error.message || "请求失败";
+  if (error.status === 403) return "Write request denied. Open and operate from same-origin /admin.";
+  if (error.status === 409) return "Conflict: a job is running or the file changed.";
+  if (error.status === 429) return "Too many requests: concurrency or queue limit reached.";
+  return error.message || "Request failed";
 }
 
 async function loadSummary() {
   const summary = await api("/api/admin/summary");
   const labels = [
-    ["total", "全部"],
-    ["candidate", "候选"],
-    ["accepted", "收录"],
-    ["rejected", "拒收"],
-    ["low_confidence", "低置信"],
-    ["archived", "归档"],
-    ["fetch_failed", "抓取失败"],
-    ["evaluation_failed", "评估失败"],
+    ["total", "Total"],
+    ["candidate", "Candidates"],
+    ["accepted", "Accepted"],
+    ["rejected", "Rejected"],
+    ["low_confidence", "Low confidence"],
+    ["archived", "Archived"],
+    ["fetch_failed", "Fetch failures"],
+    ["evaluation_failed", "Evaluation failures"],
   ];
   $("#summary-grid").innerHTML = labels
     .map(([key, label]) => `<div class="metric"><span>${label}</span><b>${summary[key] || 0}</b></div>`)
@@ -71,7 +71,7 @@ async function loadSummary() {
 async function loadSourceNames() {
   const payload = await api("/api/admin/source-names");
   $("#source-filter").innerHTML =
-    '<option value="">全部来源</option>' +
+    '<option value="">All sources</option>' +
     payload.items
       .map((source) => `<option value="${escapeHtml(source)}">${escapeHtml(source)}</option>`)
       .join("");
@@ -107,7 +107,7 @@ function renderArticles(page) {
         </tr>`;
     })
     .join("");
-  $("#page-label").textContent = `第 ${page.page} 页 / 共 ${page.total} 条`;
+  $("#page-label").textContent = `Page ${page.page} / ${page.total} total`;
   $("#prev-page").disabled = page.page <= 1;
   $("#next-page").disabled = !page.has_next;
 }
@@ -137,10 +137,10 @@ async function loadFailures() {
           <div class="list-item">
             <b>${escapeHtml(item.stage)}</b> #${item.article_id} ${escapeHtml(item.title)}<br>
             ${escapeHtml(item.error || "")}<br>
-            <button data-action="${item.stage === "fetch" ? "retry-fetch" : "retry-evaluate"}" data-id="${item.article_id}">重试</button>
+            <button data-action="${item.stage === "fetch" ? "retry-fetch" : "retry-evaluate"}" data-id="${item.article_id}">Retry</button>
           </div>`,
       )
-      .join("") || '<p class="muted">暂无失败</p>';
+      .join("") || '<p class="muted">No failures</p>';
 }
 
 async function loadJobs() {
@@ -152,12 +152,12 @@ async function loadJobs() {
         (job) =>
           `<div class="list-item">${job.kind} ${job.status} ${job.job_id}<br>${escapeHtml(job.error || JSON.stringify(job.result || ""))}</div>`,
       )
-      .join("") || '<p class="muted">暂无任务</p>';
+      .join("") || '<p class="muted">No jobs</p>';
 }
 
 async function submitJob(kind) {
   const job = await api(`/api/admin/jobs/${kind}`, { method: "POST" });
-  setStatus(`任务已提交：${job.job_id}`);
+  setStatus(`Job submitted: ${job.job_id}`);
   await pollJob(job.job_id);
 }
 
@@ -193,7 +193,7 @@ async function saveSources() {
     }),
   });
   state.sourcesHash = payload.content_hash;
-  $("#sources-status").textContent = "已保存";
+  $("#sources-status").textContent = "Saved";
 }
 
 async function showDetail(id) {
@@ -213,7 +213,7 @@ async function handleArticleAction(button) {
   if (action === "retry-fetch" || action === "retry-evaluate") {
     const suffix = action === "retry-fetch" ? "retry-fetch" : "retry-evaluate";
     const job = await api(`/api/admin/articles/${id}/${suffix}`, { method: "POST" });
-    setStatus(`任务已提交：${job.job_id}`);
+    setStatus(`Job submitted: ${job.job_id}`);
     await pollJob(job.job_id);
     return;
   }
@@ -336,7 +336,7 @@ async function boot() {
   bindEvents();
   await loadSourceNames();
   await Promise.all([loadSummary(), loadArticles(), loadFailures(), loadJobs(), loadSources()]);
-  setStatus("就绪");
+  setStatus("Ready");
 }
 
 boot().catch((error) => setStatus(errorText(error)));
