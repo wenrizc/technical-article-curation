@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from tac.models import EvaluationResult
+from tac.models import ArticleStatus, EvaluationResult
 
 VALID = {
     "decision": "accept",
@@ -31,3 +31,7 @@ def test_evaluation_result_rejects_missing_field():
     data.pop("full_reasoning")
     with pytest.raises(ValidationError):
         EvaluationResult.model_validate(data)
+
+
+def test_article_status_supports_archived():
+    assert ArticleStatus("archived") is ArticleStatus.archived

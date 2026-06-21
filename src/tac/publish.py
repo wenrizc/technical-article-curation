@@ -6,7 +6,7 @@ from pathlib import Path
 
 from . import db
 from .config import Settings
-from .utils import yaml_scalar
+from .utils import atomic_write_text, yaml_scalar
 
 
 def _frontmatter(article: sqlite3.Row, tags: list[str]) -> str:
@@ -55,25 +55,29 @@ def publish_public(settings: Settings, conn: sqlite3.Connection) -> dict[str, in
     articles_dir = public_dir / "articles"
     articles_dir.mkdir(parents=True, exist_ok=True)
     records = []
+    expected_files: set[Path] = set()
     for article in db.accepted_articles_for_publish(conn):
         tags = json.loads(article["tags"])
         dimensions = json.loads(article["dimensions"])
         record = _public_record(article, tags, dimensions)
         records.append(record)
         slug = article["slug"]
+        md_path = articles_dir / f"{slug}.md"
+        json_path = articles_dir / f"{slug}.json"
+        expected_files.update({md_path, json_path})
         md = (
             _frontmatter(article, tags)
             + _source_block(article, article["fetched_at"])
             + article["content_markdown"].strip()
             + "\n"
         )
-        (articles_dir / f"{slug}.md").write_text(md, encoding="utf-8")
-        (articles_dir / f"{slug}.json").write_text(
-            json.dumps(record, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
-    (public_dir / "index.json").write_text(
+        atomic_write_text(md_path, md)
+        atomic_write_text(json_path, json.dumps(record, ensure_ascii=False, indent=2) + "\n")
+    for path in articles_dir.glob("*"):
+        if path.is_file() and path.suffix in {".json", ".md"} and path not in expected_files:
+            path.unlink()
+    atomic_write_text(
+        public_dir / "index.json",
         json.dumps(records, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
     )
     return {"published": len(records)}

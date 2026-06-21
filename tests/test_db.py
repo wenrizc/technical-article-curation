@@ -1,12 +1,34 @@
 from pathlib import Path
 
 from tac import db
+from tac.models import ArticleStatus, EvaluationResult
+from tac.services import articles
 
 
 def _connect(tmp_path):
     conn = db.connect(tmp_path / "state.db")
     db.migrate(conn)
     return conn
+
+
+def _accepted_result() -> EvaluationResult:
+    return EvaluationResult.model_validate(
+        {
+            "decision": "accept",
+            "confidence": "high",
+            "dimensions": {
+                "工程价值": "high",
+                "技术深度": "high",
+                "原创性": "medium",
+                "可复用性": "high",
+                "可读性": "high",
+            },
+            "summary": "摘要",
+            "tags": ["Architecture"],
+            "recommendation_reason": "推荐理由",
+            "full_reasoning": "内部原因",
+        }
+    )
 
 
 def test_add_candidate_dedupes_by_normalized_url(tmp_path):
@@ -85,6 +107,129 @@ def test_failure_report_separates_fetch_and_evaluation_failures(tmp_path):
         (fetch_id, "fetch", "network"),
         (eval_id, "evaluation", "schema"),
     ]
+
+
+def test_archive_records_previous_status(tmp_path):
+    conn = _connect(tmp_path)
+    article_id, _, _ = db.add_candidate(
+        conn, title="A", url="https://example.com/a", source_name="s"
+    )
+    articles.set_article_status(conn, article_id, ArticleStatus.accepted)
+
+    archived = articles.archive_article(conn, article_id)
+
+    assert archived["status"] == "archived"
+    assert archived["previous_status"] == "accepted"
+    assert archived["archived_at"]
+
+
+def test_unarchive_restores_previous_status_and_clears_archive_fields(tmp_path):
+    conn = _connect(tmp_path)
+    article_id, _, _ = db.add_candidate(
+        conn, title="A", url="https://example.com/a", source_name="s"
+    )
+    articles.set_article_status(conn, article_id, ArticleStatus.rejected)
+    articles.archive_article(conn, article_id)
+
+    restored = articles.unarchive_article(conn, article_id)
+
+    assert restored["status"] == "rejected"
+    assert restored["previous_status"] is None
+    assert restored["archived_at"] is None
+
+
+def test_set_status_to_archived_applies_archive_semantics(tmp_path):
+    conn = _connect(tmp_path)
+    article_id, _, _ = db.add_candidate(
+        conn, title="A", url="https://example.com/a", source_name="s"
+    )
+
+    archived = articles.set_article_status(conn, article_id, ArticleStatus.archived)
+
+    assert archived["status"] == "archived"
+    assert archived["previous_status"] == "candidate"
+    assert archived["archived_at"]
+
+
+def test_set_status_from_archived_clears_archive_fields(tmp_path):
+    conn = _connect(tmp_path)
+    article_id, _, _ = db.add_candidate(
+        conn, title="A", url="https://example.com/a", source_name="s"
+    )
+    articles.archive_article(conn, article_id)
+
+    restored = articles.set_article_status(conn, article_id, ArticleStatus.low_confidence)
+
+    assert restored["status"] == "low_confidence"
+    assert restored["previous_status"] is None
+    assert restored["archived_at"] is None
+
+
+def test_management_queries_include_archived(tmp_path):
+    conn = _connect(tmp_path)
+    article_id, _, _ = db.add_candidate(
+        conn, title="Archived", url="https://example.com/a", source_name="s"
+    )
+    articles.archive_article(conn, article_id)
+
+    page = articles.list_admin_articles(conn)
+
+    assert page.total == 1
+    assert page.items[0]["status"] == "archived"
+
+
+def test_public_queries_exclude_archived(tmp_path):
+    conn = _connect(tmp_path)
+    article_id, _, _ = db.add_candidate(
+        conn, title="Accepted", url="https://example.com/a", source_name="s"
+    )
+    db.record_fetch_success(conn, article_id, "# Body", {"crawler": "fixture"})
+    db.record_evaluation(conn, article_id, _accepted_result(), "fixture-model", "{}")
+    assert articles.list_public_articles(conn).total == 1
+
+    articles.archive_article(conn, article_id)
+
+    assert articles.list_public_articles(conn).total == 0
+
+
+def test_fetch_evaluation_do_not_unarchive_article(tmp_path):
+    conn = _connect(tmp_path)
+    article_id, _, _ = db.add_candidate(
+        conn, title="A", url="https://example.com/a", source_name="s"
+    )
+    articles.archive_article(conn, article_id)
+
+    assert db.record_fetch_success(conn, article_id, "# Body", {"crawler": "fixture"}) is False
+    db.record_evaluation(conn, article_id, _accepted_result(), "fixture-model", "{}")
+    article = conn.execute("SELECT * FROM articles WHERE id = ?", (article_id,)).fetchone()
+    fetch_count = conn.execute(
+        "SELECT COUNT(*) FROM fetches WHERE article_id = ?", (article_id,)
+    ).fetchone()[0]
+
+    assert article["status"] == "archived"
+    assert fetch_count == 0
+
+
+def test_admin_articles_pagination_search_and_failed_only(tmp_path):
+    conn = _connect(tmp_path)
+    id1, _, _ = db.add_candidate(
+        conn, title="Queue Latency", url="https://example.com/queue", source_name="alpha"
+    )
+    id2, _, _ = db.add_candidate(
+        conn, title="Storage Notes", url="https://example.com/storage", source_name="beta"
+    )
+    db.record_failure(conn, id2, "network")
+
+    first_page = articles.list_admin_articles(conn, page=1, page_size=1)
+    search_page = articles.list_admin_articles(conn, q="queue")
+    failed_page = articles.list_admin_articles(conn, failed_only=True)
+
+    assert first_page.total == 2
+    assert len(first_page.items) == 1
+    assert search_page.total == 1
+    assert search_page.items[0]["id"] == id1
+    assert failed_page.total == 1
+    assert failed_page.items[0]["id"] == id2
 
 
 def test_robustness_migration_rebuilds_legacy_articles_schema(tmp_path):

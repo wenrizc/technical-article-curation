@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
+import tempfile
 import unicodedata
 from datetime import UTC, datetime
+from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 TRACKING_QUERY_PREFIXES = ("utm_",)
@@ -67,3 +70,19 @@ def short_hash(value: str, length: int = 8) -> str:
 def yaml_scalar(value: str) -> str:
     escaped = value.replace('"', '\\"')
     return f'"{escaped}"'
+
+
+def atomic_write_text(path: Path, content: str, *, encoding: str = "utf-8") -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        "w",
+        encoding=encoding,
+        dir=path.parent,
+        delete=False,
+        newline="",
+    ) as temp:
+        temp.write(content)
+        temp.flush()
+        os.fsync(temp.fileno())
+        temp_path = Path(temp.name)
+    os.replace(temp_path, path)

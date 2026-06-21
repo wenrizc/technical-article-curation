@@ -9,11 +9,13 @@ from .models import ArticleStatus, EvaluationResult
 from .utils import normalize_url, source_title_slug, utc_now_iso
 
 
-def connect(db_path: Path) -> sqlite3.Connection:
+def connect(db_path: Path, *, busy_timeout_ms: int = 5000) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute(f"PRAGMA busy_timeout = {busy_timeout_ms}")
     return conn
 
 
@@ -90,6 +92,10 @@ def find_existing(conn: sqlite3.Connection, normalized_url: str) -> sqlite3.Row 
         "SELECT * FROM articles WHERE normalized_url = ? ORDER BY id ASC LIMIT 1",
         (normalized_url,),
     ).fetchone()
+
+
+def get_article(conn: sqlite3.Connection, article_id: int) -> sqlite3.Row | None:
+    return conn.execute("SELECT * FROM articles WHERE id = ?", (article_id,)).fetchone()
 
 
 def slug_exists(conn: sqlite3.Connection, slug: str) -> bool:
@@ -191,7 +197,10 @@ def record_fetch_success(
     article_id: int,
     content_markdown: str,
     metadata: dict[str, object],
-) -> None:
+) -> bool:
+    article = get_article(conn, article_id)
+    if not article or article["status"] == ArticleStatus.archived.value:
+        return False
     now = utc_now_iso()
     conn.execute(
         """
@@ -205,6 +214,7 @@ def record_fetch_success(
         (now, article_id),
     )
     conn.commit()
+    return True
 
 
 def record_failure(conn: sqlite3.Connection, article_id: int, error: str) -> None:
@@ -253,6 +263,7 @@ def record_evaluation(
     raw_json: str,
 ) -> None:
     now = utc_now_iso()
+    article = get_article(conn, article_id)
     conn.execute(
         """
         INSERT INTO evaluations(
@@ -275,23 +286,24 @@ def record_evaluation(
             raw_json,
         ),
     )
-    if result.decision.value == "accept" and result.confidence.value == "high":
-        status = ArticleStatus.accepted.value
-        collected_at = now
-    elif result.decision.value == "reject":
-        status = ArticleStatus.rejected.value
-        collected_at = None
-    else:
-        status = ArticleStatus.low_confidence.value
-        collected_at = None
-    conn.execute(
-        """
-        UPDATE articles
-        SET status = ?, collected_at = COALESCE(?, collected_at), updated_at = ?, error = NULL
-        WHERE id = ?
-        """,
-        (status, collected_at, now, article_id),
-    )
+    if article and article["status"] != ArticleStatus.archived.value:
+        if result.decision.value == "accept" and result.confidence.value == "high":
+            status = ArticleStatus.accepted.value
+            collected_at = now
+        elif result.decision.value == "reject":
+            status = ArticleStatus.rejected.value
+            collected_at = None
+        else:
+            status = ArticleStatus.low_confidence.value
+            collected_at = None
+        conn.execute(
+            """
+            UPDATE articles
+            SET status = ?, collected_at = COALESCE(?, collected_at), updated_at = ?, error = NULL
+            WHERE id = ?
+            """,
+            (status, collected_at, now, article_id),
+        )
     conn.commit()
 
 

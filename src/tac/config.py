@@ -22,6 +22,20 @@ class Settings:
     prompt_language: str
     prompt_path: Path
     few_shot_dir: Path
+    auto_migrate: bool = True
+    http_max_concurrency: int = 16
+    job_max_concurrency: int = 1
+    job_queue_limit: int = 8
+    fetch_max_concurrency: int = 1
+    evaluate_max_concurrency: int = 1
+    discover_max_concurrency: int = 2
+    max_request_body_bytes: int = 1_048_576
+    fetch_timeout_seconds: float = 90
+    ai_timeout_seconds: float = 90
+    job_timeout_seconds: float = 1_800
+    fetch_max_markdown_bytes: int = 2_097_152
+    job_history_limit: int = 100
+    db_busy_timeout_ms: int = 5_000
 
 
 def _path_from_env(name: str, default: str) -> Path:
@@ -33,6 +47,20 @@ def _bool_from_env(name: str, default: bool) -> bool:
     if value is None:
         return default
     return value.strip().lower() not in {"0", "false", "no", "off", "disabled"}
+
+
+def _int_from_env(name: str, default: int, *, minimum: int = 0) -> int:
+    value = int(os.environ.get(name, str(default)))
+    if value < minimum:
+        raise ValueError(f"{name} must be >= {minimum}")
+    return value
+
+
+def _float_from_env(name: str, default: float, *, minimum: float = 0) -> float:
+    value = float(os.environ.get(name, str(default)))
+    if value < minimum:
+        raise ValueError(f"{name} must be >= {minimum}")
+    return value
 
 
 def _prompt_language() -> str:
@@ -78,4 +106,22 @@ def get_settings() -> Settings:
         prompt_language=prompt_language,
         prompt_path=_path_from_env("TAC_PROMPT_PATH", f"prompts/{prompt_language}/evaluate.md"),
         few_shot_dir=_path_from_env("TAC_FEW_SHOT_DIR", f"prompts/{prompt_language}/few_shots"),
+        auto_migrate=_bool_from_env("TAC_AUTO_MIGRATE", True),
+        http_max_concurrency=_int_from_env("TAC_HTTP_MAX_CONCURRENCY", 16, minimum=1),
+        job_max_concurrency=_int_from_env("TAC_JOB_MAX_CONCURRENCY", 1, minimum=1),
+        job_queue_limit=_int_from_env("TAC_JOB_QUEUE_LIMIT", 8, minimum=0),
+        fetch_max_concurrency=_int_from_env("TAC_FETCH_MAX_CONCURRENCY", 1, minimum=1),
+        evaluate_max_concurrency=_int_from_env("TAC_EVALUATE_MAX_CONCURRENCY", 1, minimum=1),
+        discover_max_concurrency=_int_from_env("TAC_DISCOVER_MAX_CONCURRENCY", 2, minimum=1),
+        max_request_body_bytes=_int_from_env(
+            "TAC_MAX_REQUEST_BODY_BYTES", 1_048_576, minimum=1
+        ),
+        fetch_timeout_seconds=_float_from_env("TAC_FETCH_TIMEOUT_SECONDS", 90, minimum=1),
+        ai_timeout_seconds=_float_from_env("TAC_AI_TIMEOUT_SECONDS", 90, minimum=1),
+        job_timeout_seconds=_float_from_env("TAC_JOB_TIMEOUT_SECONDS", 1_800, minimum=1),
+        fetch_max_markdown_bytes=_int_from_env(
+            "TAC_FETCH_MAX_MARKDOWN_BYTES", 2_097_152, minimum=1
+        ),
+        job_history_limit=_int_from_env("TAC_JOB_HISTORY_LIMIT", 100, minimum=1),
+        db_busy_timeout_ms=_int_from_env("TAC_DB_BUSY_TIMEOUT_MS", 5_000, minimum=0),
     )

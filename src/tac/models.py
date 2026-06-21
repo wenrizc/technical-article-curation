@@ -11,6 +11,7 @@ class ArticleStatus(str, Enum):
     accepted = "accepted"
     rejected = "rejected"
     low_confidence = "low_confidence"
+    archived = "archived"
 
 
 class Decision(str, Enum):
