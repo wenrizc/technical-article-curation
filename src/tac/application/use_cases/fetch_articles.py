@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from time import sleep
 
@@ -62,11 +63,37 @@ def _articles_for_fetch(
         f"""
         SELECT * FROM articles
         WHERE id IN ({placeholders})
-          AND status != 'archived'
         ORDER BY id ASC
         """,
         article_ids,
     ).fetchall()
+
+
+def _fetch_article(
+    settings: Settings, article: sqlite3.Row
+) -> tuple[int, FetchResult | None, str | None]:
+    try:
+        if settings.fetch_fixture_path:
+            result = FetchResult(
+                markdown=settings.fetch_fixture_path.read_text(encoding="utf-8"),
+                metadata={"crawler": "fixture", "url": article["url"]},
+            )
+        else:
+            result = fetch_url(
+                article["url"],
+                crawler4ai_enabled=settings.crawler4ai_enabled,
+                timeout_seconds=settings.fetch_timeout_seconds,
+            )
+        if not result.markdown.strip():
+            raise ValueError("empty markdown")
+        markdown_size = len(result.markdown.encode("utf-8"))
+        if markdown_size > settings.fetch_max_markdown_bytes:
+            raise ValueError(
+                f"markdown too large: {markdown_size} > {settings.fetch_max_markdown_bytes}"
+            )
+        return int(article["id"]), result, None
+    except Exception as exc:
+        return int(article["id"]), None, str(exc)
 
 
 def fetch_pending(
@@ -75,39 +102,26 @@ def fetch_pending(
     limit: int | None = None,
     article_ids: list[int] | None = None,
 ) -> dict[str, int]:
-    attempted = 0
     succeeded = 0
     failed = 0
-    for article in _articles_for_fetch(conn, max_retry=settings.max_retry, article_ids=article_ids):
-        if limit is not None and attempted >= limit:
-            break
-        attempted += 1
-        try:
-            if settings.fetch_fixture_path:
-                result = FetchResult(
-                    markdown=settings.fetch_fixture_path.read_text(encoding="utf-8"),
-                    metadata={"crawler": "fixture", "url": article["url"]},
-                )
-            else:
-                result = fetch_url(
-                    article["url"],
-                    crawler4ai_enabled=settings.crawler4ai_enabled,
-                    timeout_seconds=settings.fetch_timeout_seconds,
-                )
-            if not result.markdown.strip():
-                raise ValueError("empty markdown")
-            markdown_size = len(result.markdown.encode("utf-8"))
-            if markdown_size > settings.fetch_max_markdown_bytes:
-                raise ValueError(
-                    f"markdown too large: {markdown_size} > {settings.fetch_max_markdown_bytes}"
-                )
-            if db.record_fetch_success(conn, int(article["id"]), result.markdown, result.metadata):
+    articles = _articles_for_fetch(conn, max_retry=settings.max_retry, article_ids=article_ids)
+    if limit is not None:
+        articles = articles[:limit]
+    if not articles:
+        return {"attempted": 0, "succeeded": 0, "failed": 0}
+
+    max_workers = max(1, settings.fetch_max_concurrency)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(_fetch_article, settings, article) for article in articles]
+        for future in as_completed(futures):
+            article_id, result, error = future.result()
+            if result and db.record_fetch_success(
+                conn, article_id, result.markdown, result.metadata
+            ):
                 succeeded += 1
             else:
+                db.record_failure(conn, article_id, error or "fetch result was not written")
                 failed += 1
-        except Exception as exc:
-            db.record_failure(conn, int(article["id"]), str(exc))
-            failed += 1
-        if settings.fetch_delay_seconds > 0:
-            sleep(settings.fetch_delay_seconds)
-    return {"attempted": attempted, "succeeded": succeeded, "failed": failed}
+            if settings.fetch_delay_seconds > 0:
+                sleep(settings.fetch_delay_seconds)
+    return {"attempted": len(articles), "succeeded": succeeded, "failed": failed}

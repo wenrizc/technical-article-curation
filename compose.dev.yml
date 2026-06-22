@@ -1,0 +1,22 @@
+services:
+  tac:
+    image: ghcr.io/astral-sh/uv:python3.11-bookworm
+    working_dir: /app
+    command: uv run uvicorn tac.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      TAC_RSSHUB_ENABLED: "true"
+      TAC_RSSHUB_INSTANCE: "http://rsshub:1200"
+      TAC_RSSHUB_STARTUP_CHECK: "true"
+    volumes:
+      - .:/app
+    depends_on:
+      - rsshub
+
+  rsshub:
+    image: diygod/rsshub:chromium-bundled
+    ports:
+      - "1200:1200"
+    environment:
+      CACHE_TYPE: memory

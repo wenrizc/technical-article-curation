@@ -1,107 +1,137 @@
 sources:
   - name: "美团技术团队"
-    rss_url: "https://tech.meituan.com/feed/"
     site_url: "https://tech.meituan.com/"
     enabled: true
     display: "featured"
     tags: ["Engineering", "Architecture", "China"]
+    feed:
+      type: "direct"
+      url: "https://tech.meituan.com/feed/"
 
   - name: "有赞技术团队"
-    rss_url: "https://tech.youzan.com/rss/"
     site_url: "https://tech.youzan.com/"
     enabled: true
     display: "featured"
     tags: ["Engineering", "Architecture", "China"]
+    feed:
+      type: "direct"
+      url: "https://tech.youzan.com/rss/"
 
   - name: "Cloudflare Blog"
-    rss_url: "https://blog.cloudflare.com/rss/"
     site_url: "https://blog.cloudflare.com/"
     enabled: true
     display: "featured"
     tags: ["Infrastructure", "Security", "Performance"]
+    feed:
+      type: "direct"
+      url: "https://blog.cloudflare.com/rss/"
 
   - name: "GitHub Engineering"
-    rss_url: "https://github.blog/engineering/feed/"
     site_url: "https://github.blog/engineering/"
     enabled: true
     display: "featured"
     tags: ["Developer Tools", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://github.blog/engineering/feed/"
 
   - name: "Dropbox Tech"
-    rss_url: "https://dropbox.tech/feed"
     site_url: "https://dropbox.tech/"
     enabled: true
     display: "default"
     tags: ["Infrastructure", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://dropbox.tech/feed"
 
   - name: "Slack Engineering"
-    rss_url: "https://slack.engineering/feed/"
     site_url: "https://slack.engineering/"
     enabled: true
     display: "default"
     tags: ["Collaboration", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://slack.engineering/feed/"
 
   - name: "Meta Engineering"
-    rss_url: "https://engineering.fb.com/feed/"
     site_url: "https://engineering.fb.com/"
     enabled: true
     display: "default"
     tags: ["Infrastructure", "AI", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://engineering.fb.com/feed/"
 
   - name: "Kubernetes Blog"
-    rss_url: "https://kubernetes.io/feed.xml"
     site_url: "https://kubernetes.io/blog/"
     enabled: true
     display: "default"
     tags: ["Kubernetes", "Cloud Native"]
+    feed:
+      type: "direct"
+      url: "https://kubernetes.io/feed.xml"
 
   - name: "CNCF Blog"
-    rss_url: "https://www.cncf.io/feed/"
     site_url: "https://www.cncf.io/blog/"
     enabled: true
     display: "default"
     tags: ["Cloud Native", "Infrastructure"]
+    feed:
+      type: "direct"
+      url: "https://www.cncf.io/feed/"
 
   - name: "InfoQ 中文"
-    rss_url: "https://www.infoq.cn/feed"
     site_url: "https://www.infoq.cn/"
     enabled: true
     display: "default"
     tags: ["Architecture", "China", "Community"]
+    feed:
+      type: "direct"
+      url: "https://www.infoq.cn/feed"
 
   - name: "SegmentFault"
-    rss_url: "https://segmentfault.com/feeds"
     site_url: "https://segmentfault.com/"
     enabled: true
     display: "default"
     tags: ["Community", "China"]
+    feed:
+      type: "direct"
+      url: "https://segmentfault.com/feeds"
 
   - name: "Martin Fowler"
-    rss_url: "https://martinfowler.com/feed.atom"
     site_url: "https://martinfowler.com/"
     enabled: true
     display: "featured"
     tags: ["Architecture", "Software Design", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://martinfowler.com/feed.atom"
 
   - name: "Julia Evans"
-    rss_url: "https://jvns.ca/atom.xml"
     site_url: "https://jvns.ca/"
     enabled: true
     display: "featured"
     tags: ["Debugging", "Linux", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://jvns.ca/atom.xml"
 
   - name: "Brendan Gregg"
-    rss_url: "https://www.brendangregg.com/blog/rss.xml"
     site_url: "https://www.brendangregg.com/blog/"
     enabled: true
     display: "featured"
     tags: ["Performance", "Observability", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://www.brendangregg.com/blog/rss.xml"
 
   - name: "阮一峰的网络日志"
-    rss_url: "https://www.ruanyifeng.com/blog/atom.xml"
     site_url: "https://www.ruanyifeng.com/blog/"
     enabled: true
     display: "default"
     tags: ["Web", "Personal Blog", "China"]
+    feed:
+      type: "direct"
+      url: "https://www.ruanyifeng.com/blog/atom.xml"
 
 manual_urls: []

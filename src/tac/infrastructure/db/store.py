@@ -53,6 +53,107 @@ def latest_schema_versions(conn: sqlite3.Connection) -> list[str]:
     return [row["version"] for row in rows]
 
 
+def create_job_run(
+    conn: sqlite3.Connection,
+    *,
+    job_id: str,
+    kind: str,
+    status: str,
+    trigger: str,
+    schedule_id: str | None = None,
+    target_article_id: int | None = None,
+    created_at: str,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO job_runs(
+            job_id, kind, status, trigger, schedule_id, target_article_id, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (job_id, kind, status, trigger, schedule_id, target_article_id, created_at),
+    )
+    conn.commit()
+
+
+def mark_job_started(conn: sqlite3.Connection, job_id: str, *, started_at: str) -> None:
+    conn.execute(
+        """
+        UPDATE job_runs
+        SET status = 'running', started_at = ?
+        WHERE job_id = ?
+        """,
+        (started_at, job_id),
+    )
+    conn.commit()
+
+
+def finish_job_run(
+    conn: sqlite3.Connection,
+    job_id: str,
+    *,
+    status: str,
+    finished_at: str,
+    result: object = None,
+    error: str | None = None,
+) -> None:
+    result_json = None if result is None else json.dumps(result, ensure_ascii=False)
+    conn.execute(
+        """
+        UPDATE job_runs
+        SET status = ?, finished_at = ?, result_json = ?, error = ?
+        WHERE job_id = ?
+        """,
+        (status, finished_at, result_json, error, job_id),
+    )
+    conn.commit()
+
+
+def mark_interrupted_job_runs(conn: sqlite3.Connection, *, finished_at: str) -> int:
+    cur = conn.execute(
+        """
+        UPDATE job_runs
+        SET status = 'failed',
+            finished_at = COALESCE(finished_at, ?),
+            error = 'job interrupted by service restart'
+        WHERE status IN ('queued', 'running')
+        """,
+        (finished_at,),
+    )
+    conn.commit()
+    return int(cur.rowcount)
+
+
+def get_job_run(conn: sqlite3.Connection, job_id: str) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM job_runs WHERE job_id = ?",
+        (job_id,),
+    ).fetchone()
+
+
+def list_job_runs(conn: sqlite3.Connection, *, limit: int) -> list[sqlite3.Row]:
+    return conn.execute(
+        """
+        SELECT * FROM job_runs
+        ORDER BY created_at DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+
+
+def latest_schedule_job_run(conn: sqlite3.Connection, schedule_id: str) -> sqlite3.Row | None:
+    return conn.execute(
+        """
+        SELECT * FROM job_runs
+        WHERE schedule_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+        """,
+        (schedule_id,),
+    ).fetchone()
+
+
 def get_source_state(conn: sqlite3.Connection, source_name: str) -> sqlite3.Row | None:
     return conn.execute(
         "SELECT * FROM source_state WHERE source_name = ?",
@@ -109,6 +210,7 @@ def add_candidate(
     url: str,
     source_name: str,
     source_tags: Iterable[str] = (),
+    source_publish_policy: str = "full_content",
 ) -> tuple[int, ArticleStatus, bool]:
     normalized_url = normalize_url(url)
     now = utc_now_iso()
@@ -125,9 +227,9 @@ def add_candidate(
         """
         INSERT INTO articles(
             source_name, title, url, normalized_url, slug,
-            status, retry_count, created_at, updated_at, source_tags
+            status, retry_count, created_at, updated_at, source_tags, source_publish_policy
         )
-        VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
         """,
         (
             source_name,
@@ -139,6 +241,7 @@ def add_candidate(
             now,
             now,
             json.dumps(list(source_tags), ensure_ascii=False),
+            source_publish_policy,
         ),
     )
     conn.commit()
@@ -199,7 +302,7 @@ def record_fetch_success(
     metadata: dict[str, object],
 ) -> bool:
     article = get_article(conn, article_id)
-    if not article or article["status"] == ArticleStatus.archived.value:
+    if not article:
         return False
     now = utc_now_iso()
     conn.execute(
@@ -285,7 +388,7 @@ def record_evaluation(
             raw_json,
         ),
     )
-    if article and article["status"] != ArticleStatus.archived.value:
+    if article:
         if result.decision.value == "accept":
             status = ArticleStatus.accepted.value
             collected_at = now

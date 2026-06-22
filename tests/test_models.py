@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from tac.domain.models import ArticleStatus, EvaluationResult
+from tac.domain.models import EvaluationResult, FeedConfig, SourceConfig
 
 VALID = {
     "decision": "accept",
@@ -38,5 +38,20 @@ def test_evaluation_result_rejects_removed_confidence_field():
         EvaluationResult.model_validate(data)
 
 
-def test_article_status_supports_archived():
-    assert ArticleStatus("archived") is ArticleStatus.archived
+def test_feed_config_validates_direct_url():
+    feed = FeedConfig.model_validate({"type": "direct", "url": "https://example.com/rss.xml"})
+
+    assert feed.url == "https://example.com/rss.xml"
+
+
+def test_feed_config_rejects_rsshub_full_url_route():
+    with pytest.raises(ValidationError, match="feed.route"):
+        FeedConfig.model_validate({"type": "rsshub", "route": "https://rsshub.app/zhihu/hot"})
+
+
+def test_rsshub_source_defaults_to_summary_only_publish_policy():
+    source = SourceConfig.model_validate(
+        {"name": "zhihu", "feed": {"type": "rsshub", "route": "/zhihu/hot"}}
+    )
+
+    assert source.publish_policy == "summary_only"

@@ -1,3 +1,5 @@
+from concurrent.futures import Future
+
 from tac.application.use_cases.discover_articles import discover_candidates
 from tac.infrastructure.db import store as db
 from tac.settings import Settings
@@ -10,7 +12,9 @@ def _settings(tmp_path, sources_text=None):
         or """
 sources:
   - name: example
-    rss_url: https://example.com/feed.xml
+    feed:
+      type: direct
+      url: https://example.com/feed.xml
 """,
         encoding="utf-8",
     )
@@ -130,7 +134,9 @@ def test_discover_records_source_failure_without_stopping_manual_candidates(tmp_
         """
 sources:
   - name: example
-    rss_url: https://example.com/feed.xml
+    feed:
+      type: direct
+      url: https://example.com/feed.xml
 manual_urls:
   - url: https://example.com/manual
     title: Manual
@@ -150,3 +156,121 @@ manual_urls:
     assert result["inserted"] == 1
     assert state["last_status"] == "failed"
     assert "boom" in state["last_error"]
+
+
+def test_discover_uses_configured_concurrency(tmp_path, monkeypatch):
+    settings = _settings(
+        tmp_path,
+        """
+sources:
+  - name: one
+    feed:
+      type: direct
+      url: https://example.com/one.xml
+  - name: two
+    feed:
+      type: direct
+      url: https://example.com/two.xml
+""",
+    )
+    settings = Settings(**{**settings.__dict__, "discover_max_concurrency": 4})
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    session = FakeSession([FakeResponse(status_code=304), FakeResponse(status_code=304)])
+    seen = {}
+
+    class FakeExecutor:
+        def __init__(self, max_workers):
+            seen["max_workers"] = max_workers
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def submit(self, fn, *args):
+            future = Future()
+            future.set_result(fn(*args))
+            return future
+
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.ThreadPoolExecutor", FakeExecutor
+    )
+
+    result = discover_candidates(settings, conn)
+
+    assert result["sources_not_modified"] == 2
+    assert seen["max_workers"] == 4
+
+
+def test_discover_builds_rsshub_feed_url_and_records_summary_policy(tmp_path, monkeypatch):
+    settings = _settings(
+        tmp_path,
+        """
+sources:
+  - name: zhihu
+    feed:
+      type: rsshub
+      route: /zhihu/hot
+      params:
+        limit: 20
+        filter: "AI|工程"
+""",
+    )
+    settings = Settings(
+        **{
+            **settings.__dict__,
+            "rsshub_enabled": True,
+            "rsshub_instance": "http://rsshub.local:1200",
+        }
+    )
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    feed = b"""<?xml version="1.0"?>
+<rss version="2.0"><channel><item><title>Hot</title><link>https://zhihu.com/question/1</link></item></channel></rss>
+"""
+    session = FakeSession([FakeResponse(content=feed)])
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
+
+    result = discover_candidates(settings, conn)
+    article = conn.execute("SELECT * FROM articles WHERE source_name = 'zhihu'").fetchone()
+
+    assert result["inserted"] == 1
+    assert (
+        session.calls[0]["url"]
+        == "http://rsshub.local:1200/zhihu/hot?limit=20&filter=AI%7C%E5%B7%A5%E7%A8%8B"
+    )
+    assert article["source_publish_policy"] == "summary_only"
+
+
+def test_discover_records_rsshub_disabled_as_source_failure(tmp_path, monkeypatch):
+    settings = _settings(
+        tmp_path,
+        """
+sources:
+  - name: zhihu
+    feed:
+      type: rsshub
+      route: /zhihu/hot
+""",
+    )
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    session = FakeSession([])
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
+
+    result = discover_candidates(settings, conn)
+    state = db.get_source_state(conn, "zhihu")
+
+    assert result["sources_failed"] == 1
+    assert result["found"] == 0
+    assert state["last_status"] == "failed"
+    assert "rsshub is disabled" in state["last_error"]

@@ -55,6 +55,20 @@ def test_admin_runtime_settings_defaults(monkeypatch):
         "TAC_FETCH_MAX_MARKDOWN_BYTES",
         "TAC_JOB_HISTORY_LIMIT",
         "TAC_DB_BUSY_TIMEOUT_MS",
+        "TAC_SCHEDULER_ENABLED",
+        "TAC_SCHEDULE_RUN_CRON",
+        "TAC_SCHEDULE_TIMEZONE",
+        "TAC_SCHEDULER_POLL_SECONDS",
+        "TAC_RSSHUB_ENABLED",
+        "TAC_RSSHUB_INSTANCE",
+        "TAC_RSSHUB_STARTUP_CHECK",
+        "TAC_RSSHUB_STRICT_STARTUP",
+        "TAC_RSSHUB_TIMEOUT_SECONDS",
+        "TAC_PUBLIC_BASE_URL",
+        "TAC_PUBLIC_FEED_TITLE",
+        "TAC_PUBLIC_FEED_DESCRIPTION",
+        "TAC_PUBLIC_FEED_LANGUAGE",
+        "TAC_PUBLIC_FEED_TTL_MINUTES",
     ]:
         monkeypatch.delenv(name, raising=False)
 
@@ -74,6 +88,20 @@ def test_admin_runtime_settings_defaults(monkeypatch):
     assert settings.fetch_max_markdown_bytes == 2_097_152
     assert settings.job_history_limit == 100
     assert settings.db_busy_timeout_ms == 5_000
+    assert settings.scheduler_enabled is False
+    assert settings.schedule_run_cron == "0 8 * * *"
+    assert settings.schedule_timezone == "UTC"
+    assert settings.scheduler_poll_seconds == 30
+    assert settings.rsshub_enabled is False
+    assert settings.rsshub_instance == "http://127.0.0.1:1200"
+    assert settings.rsshub_startup_check is False
+    assert settings.rsshub_strict_startup is False
+    assert settings.rsshub_timeout_seconds == 30
+    assert settings.public_base_url == "http://127.0.0.1:8000"
+    assert settings.public_feed_title == "技术文章精选"
+    assert settings.public_feed_description == "AI 辅助精选的高质量技术文章"
+    assert settings.public_feed_language == "zh-CN"
+    assert settings.public_feed_ttl_minutes == 5
 
 
 def test_admin_runtime_settings_reject_invalid_values(monkeypatch):

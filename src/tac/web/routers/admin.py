@@ -3,19 +3,22 @@ from __future__ import annotations
 import sqlite3
 from typing import Annotated
 
+import feedparser
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ValidationError
 
 from tac.application import pipeline
 from tac.application.jobs import JobConflict, JobManager, JobNotFound, JobQueueFull
+from tac.application.scheduler import SchedulerService
 from tac.application.use_cases import manage_articles as articles
+from tac.application.use_cases.discover_articles import build_rsshub_feed_url, build_session
 from tac.application.use_cases.manage_sources import (
     SourceConflict,
     SourceValidationError,
     read_sources_yaml,
     save_sources_yaml,
 )
-from tac.domain.models import ArticleStatus
+from tac.domain.models import ArticleStatus, FeedConfig
 from tac.infrastructure.db import store as db
 from tac.web.deps import db_conn, job_manager_from_request, settings_from_request
 
@@ -29,6 +32,13 @@ class StatusUpdate(BaseModel):
 class SourcesUpdate(BaseModel):
     content: str
     previous_hash: str
+
+
+class RssHubPreviewRequest(BaseModel):
+    route: str
+    instance: str | None = None
+    params: dict[str, str | int | bool] = Field(default_factory=dict)
+    limit: int = 10
 
 
 def _row_or_404(row):
@@ -54,6 +64,10 @@ def _submit(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     background_tasks.add_task(manager.run_job, job.job_id)
     return job.as_dict()
+
+
+def scheduler_from_request(request: Request) -> SchedulerService:
+    return request.app.state.scheduler
 
 
 @router.get("/summary")
@@ -108,20 +122,6 @@ def set_status(
     conn: Annotated[sqlite3.Connection, Depends(db_conn)],
 ) -> dict[str, object]:
     return _row_or_404(articles.set_article_status(conn, article_id, payload.status))
-
-
-@router.post("/articles/{article_id}/archive")
-def archive(
-    article_id: int, conn: Annotated[sqlite3.Connection, Depends(db_conn)]
-) -> dict[str, object]:
-    return _row_or_404(articles.archive_article(conn, article_id))
-
-
-@router.post("/articles/{article_id}/unarchive")
-def unarchive(
-    article_id: int, conn: Annotated[sqlite3.Connection, Depends(db_conn)]
-) -> dict[str, object]:
-    return _row_or_404(articles.unarchive_article(conn, article_id))
 
 
 @router.post("/articles/{article_id}/retry-fetch")
@@ -194,6 +194,42 @@ def update_sources(payload: SourcesUpdate, request: Request) -> dict[str, str]:
     return {"content": saved.content, "content_hash": saved.content_hash}
 
 
+@router.post("/sources/preview-rsshub")
+def preview_rsshub(payload: RssHubPreviewRequest, request: Request) -> dict[str, object]:
+    settings = settings_from_request(request)
+    try:
+        feed = FeedConfig(
+            type="rsshub",
+            route=payload.route,
+            instance=payload.instance,
+            params=payload.params,
+        )
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    feed_url = build_rsshub_feed_url(feed, settings)
+    try:
+        response = build_session().get(
+            feed_url,
+            headers={},
+            timeout=(10, settings.rsshub_timeout_seconds),
+            allow_redirects=True,
+        )
+        response.raise_for_status()
+        parsed = feedparser.parse(response.content)
+        if getattr(parsed, "bozo", False):
+            raise ValueError(f"feed parse failed: {getattr(parsed, 'bozo_exception', None)}")
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    entries = []
+    max_entries = max(1, min(payload.limit, 50))
+    for entry in parsed.entries[:max_entries]:
+        url = getattr(entry, "link", None)
+        title = getattr(entry, "title", None) or url
+        if url:
+            entries.append({"title": title, "url": url})
+    return {"status": "success", "feed_url": feed_url, "entries": entries}
+
+
 @router.get("/jobs")
 def list_jobs(request: Request) -> dict[str, object]:
     manager = job_manager_from_request(request)
@@ -207,6 +243,27 @@ def get_job(job_id: str, request: Request) -> dict[str, object]:
         return manager.get_job(job_id).as_dict()
     except JobNotFound as exc:
         raise HTTPException(status_code=404, detail="job not found") from exc
+
+
+@router.get("/schedules")
+def list_schedules(request: Request) -> dict[str, object]:
+    scheduler = scheduler_from_request(request)
+    return {"items": scheduler.schedules()}
+
+
+@router.post("/schedules/{schedule_id}/trigger")
+async def trigger_schedule(
+    schedule_id: str, request: Request, background_tasks: BackgroundTasks
+) -> dict[str, object]:
+    scheduler = scheduler_from_request(request)
+    try:
+        job = await scheduler.trigger(schedule_id, manual=True)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="schedule not found") from exc
+    if job["status"] != "skipped":
+        manager = job_manager_from_request(request)
+        background_tasks.add_task(manager.run_job, str(job["job_id"]))
+    return job
 
 
 @router.post("/jobs/discover")

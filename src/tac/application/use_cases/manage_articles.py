@@ -44,83 +44,19 @@ def _article(conn: sqlite3.Connection, article_id: int) -> sqlite3.Row | None:
     return conn.execute("SELECT * FROM articles WHERE id = ?", (article_id,)).fetchone()
 
 
-def archive_article(conn: sqlite3.Connection, article_id: int) -> sqlite3.Row | None:
-    article = _article(conn, article_id)
-    if not article:
-        return None
-    if article["status"] == ArticleStatus.archived.value:
-        return article
-    now = utc_now_iso()
-    conn.execute(
-        """
-        UPDATE articles
-        SET status = ?, previous_status = ?, archived_at = ?, updated_at = ?
-        WHERE id = ?
-        """,
-        (ArticleStatus.archived.value, article["status"], now, now, article_id),
-    )
-    conn.commit()
-    return _article(conn, article_id)
-
-
-def unarchive_article(conn: sqlite3.Connection, article_id: int) -> sqlite3.Row | None:
-    article = _article(conn, article_id)
-    if not article:
-        return None
-    if article["status"] != ArticleStatus.archived.value:
-        return article
-    restored = article["previous_status"] or ArticleStatus.candidate.value
-    if restored == ArticleStatus.archived.value:
-        restored = ArticleStatus.candidate.value
-    now = utc_now_iso()
-    conn.execute(
-        """
-        UPDATE articles
-        SET status = ?, previous_status = NULL, archived_at = NULL, updated_at = ?
-        WHERE id = ?
-        """,
-        (restored, now, article_id),
-    )
-    conn.commit()
-    return _article(conn, article_id)
-
-
 def set_article_status(
     conn: sqlite3.Connection, article_id: int, status: ArticleStatus
 ) -> sqlite3.Row | None:
     article = _article(conn, article_id)
     if not article:
         return None
-    current = ArticleStatus(article["status"])
-    if status == ArticleStatus.archived:
-        return archive_article(conn, article_id)
     now = utc_now_iso()
-    if current == ArticleStatus.archived:
-        conn.execute(
-            """
-            UPDATE articles
-            SET status = ?, previous_status = NULL, archived_at = NULL, updated_at = ?
-            WHERE id = ?
-            """,
-            (status.value, now, article_id),
-        )
-    else:
-        conn.execute(
-            "UPDATE articles SET status = ?, updated_at = ? WHERE id = ?",
-            (status.value, now, article_id),
-        )
+    conn.execute(
+        "UPDATE articles SET status = ?, updated_at = ? WHERE id = ?",
+        (status.value, now, article_id),
+    )
     conn.commit()
     return _article(conn, article_id)
-
-
-def can_write_fetch_result(conn: sqlite3.Connection, article_id: int) -> bool:
-    article = _article(conn, article_id)
-    return bool(article and article["status"] != ArticleStatus.archived.value)
-
-
-def can_write_evaluation_result(conn: sqlite3.Connection, article_id: int) -> bool:
-    article = _article(conn, article_id)
-    return bool(article and article["status"] != ArticleStatus.archived.value)
 
 
 def article_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
@@ -148,13 +84,9 @@ def _article_filters(
     source: str | None,
     q: str | None,
     failed_only: bool,
-    include_archived: bool,
 ) -> tuple[list[str], list[object]]:
     where: list[str] = []
     params: list[object] = []
-    if not include_archived:
-        where.append("a.status != ?")
-        params.append(ArticleStatus.archived.value)
     if status:
         if status == "unaccepted":
             where.append("a.status != ?")
@@ -209,7 +141,6 @@ def list_admin_articles(
         source=source,
         q=q,
         failed_only=failed_only,
-        include_archived=True,
     )
     where_sql = "WHERE " + " AND ".join(where) if where else ""
     total = conn.execute(
@@ -225,8 +156,6 @@ def list_admin_articles(
             a.url,
             a.source_name,
             a.status,
-            a.previous_status,
-            a.archived_at,
             a.retry_count,
             a.created_at,
             a.updated_at,
@@ -270,17 +199,14 @@ def list_public_articles(
     *,
     page: int = 1,
     page_size: int = 50,
-    status: str | None = None,
     q: str | None = None,
 ) -> Page:
     page, page_size = _page_values(page, page_size)
-    public_status = status or ArticleStatus.accepted.value
     where, params = _article_filters(
-        status=public_status,
+        status=ArticleStatus.accepted.value,
         source=None,
         q=q,
         failed_only=False,
-        include_archived=False,
     )
     where_sql = "WHERE " + " AND ".join(where) if where else ""
     total = conn.execute(f"SELECT COUNT(*) FROM articles a {where_sql}", params).fetchone()[0]
@@ -293,8 +219,11 @@ def list_public_articles(
             a.title,
             a.url,
             a.source_name AS source,
+            a.source_publish_policy AS publish_policy,
             a.status,
             a.collected_at,
+            a.created_at,
+            a.updated_at,
             (
                 SELECT e.summary FROM evaluations e
                 WHERE e.article_id = a.id
@@ -391,11 +320,16 @@ def get_public_article_detail(conn: sqlite3.Connection, slug: str) -> dict[str, 
               WHERE article_id = a.id
           )
         WHERE a.slug = ?
-          AND a.status != ?
+          AND a.status = ?
         """,
-        (slug, ArticleStatus.archived.value),
+        (slug, ArticleStatus.accepted.value),
     ).fetchone()
-    return article_row_to_dict(article) if article else None
+    if not article:
+        return None
+    result = article_row_to_dict(article)
+    if result.get("source_publish_policy") == "summary_only":
+        result["content_markdown"] = None
+    return result
 
 
 def source_names(conn: sqlite3.Connection) -> list[str]:
@@ -413,7 +347,6 @@ def summary(conn: sqlite3.Connection) -> dict[str, int]:
             ArticleStatus.accepted,
             ArticleStatus.rejected,
             ArticleStatus.low_confidence,
-            ArticleStatus.archived,
         )
     }
     rows = conn.execute("SELECT status, COUNT(*) AS count FROM articles GROUP BY status").fetchall()

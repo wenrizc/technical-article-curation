@@ -59,7 +59,6 @@ async function loadSummary() {
     ["accepted", "Accepted"],
     ["rejected", "Rejected"],
     ["low_confidence", "Low confidence"],
-    ["archived", "Archived"],
     ["fetch_failed", "Fetch failures"],
     ["evaluation_failed", "Evaluation failures"],
   ];
@@ -82,10 +81,6 @@ function renderArticles(page) {
   $("#articles-body").innerHTML = page.items
     .map((item) => {
       const statusClass = item.status || "";
-      const archiveButton =
-        item.status === "archived"
-          ? `<button data-action="unarchive" data-id="${item.id}">unarchive</button>`
-          : `<button data-action="archive" data-id="${item.id}">archive</button>`;
       return `
         <tr>
           <td><button data-action="detail" data-id="${item.id}">${escapeHtml(item.title)}</button><br><span class="muted">${escapeHtml(item.url)}</span></td>
@@ -102,7 +97,6 @@ function renderArticles(page) {
             <button data-action="status" data-status="accepted" data-id="${item.id}">accept</button>
             <button data-action="status" data-status="rejected" data-id="${item.id}">reject</button>
             <button data-action="status" data-status="low_confidence" data-id="${item.id}">low</button>
-            ${archiveButton}
           </td>
         </tr>`;
     })
@@ -150,9 +144,31 @@ async function loadJobs() {
       .slice(0, 8)
       .map(
         (job) =>
-          `<div class="list-item">${job.kind} ${job.status} ${job.job_id}<br>${escapeHtml(job.error || JSON.stringify(job.result || ""))}</div>`,
+          `<div class="list-item">
+            <b>${escapeHtml(job.kind)}</b> ${escapeHtml(job.status)} ${escapeHtml(job.trigger || "manual")}
+            ${job.schedule_id ? `/${escapeHtml(job.schedule_id)}` : ""}<br>
+            <span class="muted">${escapeHtml(job.started_at || job.created_at)}${job.finished_at ? ` -> ${escapeHtml(job.finished_at)}` : ""}</span><br>
+            ${escapeHtml(job.error || JSON.stringify(job.result || ""))}
+          </div>`,
       )
       .join("") || '<p class="muted">No jobs</p>';
+}
+
+async function loadSchedules() {
+  const payload = await api("/api/admin/schedules");
+  $("#schedules-list").innerHTML =
+    payload.items
+      .map(
+        (schedule) => `
+          <div class="list-item">
+            <b>${escapeHtml(schedule.schedule_id)}</b> ${escapeHtml(schedule.kind)}
+            ${schedule.enabled ? "enabled" : "disabled"}<br>
+            <span class="muted">${escapeHtml(schedule.cron)} ${escapeHtml(schedule.timezone)} next ${escapeHtml(schedule.next_run_at || "-")}</span><br>
+            ${schedule.latest_job ? `last ${escapeHtml(schedule.latest_job.status)} ${escapeHtml(schedule.latest_job.finished_at || schedule.latest_job.created_at)}` : "No runs"}<br>
+            <button data-schedule-trigger="${escapeHtml(schedule.schedule_id)}">Trigger</button>
+          </div>`,
+      )
+      .join("") || '<p class="muted">No schedules</p>';
 }
 
 async function submitJob(kind) {
@@ -196,6 +212,37 @@ async function saveSources() {
   $("#sources-status").textContent = "Saved";
 }
 
+async function previewRsshub() {
+  const paramsText = $("#rsshub-params").value.trim() || "{}";
+  let params;
+  try {
+    params = JSON.parse(paramsText);
+  } catch (error) {
+    $("#rsshub-status").textContent = "Params JSON is invalid";
+    return;
+  }
+  const payload = await api("/api/admin/sources/preview-rsshub", {
+    method: "POST",
+    body: JSON.stringify({
+      route: $("#rsshub-route").value.trim(),
+      instance: $("#rsshub-instance").value.trim() || null,
+      limit: Number($("#rsshub-limit").value || "10"),
+      params,
+    }),
+  });
+  $("#rsshub-status").textContent = payload.feed_url;
+  $("#rsshub-preview-list").innerHTML =
+    payload.entries
+      .map(
+        (entry) => `
+          <div class="list-item">
+            <b>${escapeHtml(entry.title)}</b><br>
+            <a href="${escapeHtml(entry.url)}" target="_blank" rel="noreferrer">${escapeHtml(entry.url)}</a>
+          </div>`,
+      )
+      .join("") || '<p class="muted">No entries</p>';
+}
+
 async function showDetail(id) {
   const detail = await api(`/api/admin/articles/${id}`);
   $("#detail-content").textContent = JSON.stringify(detail, null, 2);
@@ -216,9 +263,6 @@ async function handleArticleAction(button) {
     setStatus(`Job submitted: ${job.job_id}`);
     await pollJob(job.job_id);
     return;
-  }
-  if (action === "archive" || action === "unarchive") {
-    await api(`/api/admin/articles/${id}/${action}`, { method: "POST" });
   }
   if (action === "status") {
     await api(`/api/admin/articles/${id}/status`, {
@@ -316,6 +360,20 @@ function bindEvents() {
   $("#refresh-jobs").addEventListener("click", () => {
     loadJobs().catch((error) => setStatus(errorText(error)));
   });
+  $("#refresh-schedules").addEventListener("click", () => {
+    loadSchedules().catch((error) => setStatus(errorText(error)));
+  });
+  $("#schedules-list").addEventListener("click", async (event) => {
+    const button = event.target.closest("button[data-schedule-trigger]");
+    if (!button) return;
+    try {
+      const job = await api(`/api/admin/schedules/${button.dataset.scheduleTrigger}/trigger`, { method: "POST" });
+      setStatus(`Schedule submitted: ${job.job_id}`);
+      await pollJob(job.job_id);
+    } catch (error) {
+      setStatus(errorText(error));
+    }
+  });
   $("#refresh-failures").addEventListener("click", () => {
     loadFailures().catch((error) => setStatus(errorText(error)));
   });
@@ -324,6 +382,16 @@ function bindEvents() {
       await saveSources();
     } catch (error) {
       $("#sources-status").textContent = errorText(error);
+    }
+  });
+  $("#preview-rsshub").addEventListener("click", async () => {
+    try {
+      $("#preview-rsshub").disabled = true;
+      await previewRsshub();
+    } catch (error) {
+      $("#rsshub-status").textContent = errorText(error);
+    } finally {
+      $("#preview-rsshub").disabled = false;
     }
   });
   $("#close-detail").addEventListener("click", () => {
@@ -335,7 +403,7 @@ function bindEvents() {
 async function boot() {
   bindEvents();
   await loadSourceNames();
-  await Promise.all([loadSummary(), loadArticles(), loadFailures(), loadJobs(), loadSources()]);
+  await Promise.all([loadSummary(), loadArticles(), loadFailures(), loadJobs(), loadSchedules(), loadSources()]);
   setStatus("Ready");
 }
 

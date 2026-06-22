@@ -38,7 +38,6 @@
               <option value="accepted">accepted</option>
               <option value="rejected">rejected</option>
               <option value="low_confidence">low_confidence</option>
-              <option value="archived">archived</option>
             </select>
             <select id="source-filter">
               <option value="">All sources</option>
@@ -84,6 +83,41 @@
           <button id="refresh-jobs">Refresh</button>
         </div>
         <div id="jobs-list" class="list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>Schedules</h2>
+          <button id="refresh-schedules">Refresh</button>
+        </div>
+        <div id="schedules-list" class="list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>RSSHub Preview</h2>
+          <button id="preview-rsshub" class="primary">Preview</button>
+        </div>
+        <div class="rsshub-form">
+          <label>
+            Route
+            <input id="rsshub-route" type="text" placeholder="/zhihu/hot" />
+          </label>
+          <label>
+            Instance
+            <input id="rsshub-instance" type="url" placeholder="http://127.0.0.1:1200" />
+          </label>
+          <label>
+            Limit
+            <input id="rsshub-limit" type="number" min="1" max="50" value="10" />
+          </label>
+          <label class="rsshub-params">
+            Params JSON
+            <textarea id="rsshub-params" spellcheck="false">{}</textarea>
+          </label>
+        </div>
+        <p id="rsshub-status" class="muted"></p>
+        <div id="rsshub-preview-list" class="list"></div>
       </section>
 
       <section class="panel">

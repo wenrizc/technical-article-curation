@@ -36,6 +36,20 @@ class Settings:
     fetch_max_markdown_bytes: int = 2_097_152
     job_history_limit: int = 100
     db_busy_timeout_ms: int = 5_000
+    scheduler_enabled: bool = False
+    schedule_run_cron: str = "0 8 * * *"
+    schedule_timezone: str = "UTC"
+    scheduler_poll_seconds: float = 30
+    rsshub_enabled: bool = False
+    rsshub_instance: str = "http://127.0.0.1:1200"
+    rsshub_startup_check: bool = False
+    rsshub_strict_startup: bool = False
+    rsshub_timeout_seconds: float = 30
+    public_base_url: str = "http://127.0.0.1:8000"
+    public_feed_title: str = "技术文章精选"
+    public_feed_description: str = "AI 辅助精选的高质量技术文章"
+    public_feed_language: str = "zh-CN"
+    public_feed_ttl_minutes: int = 5
 
 
 def _path_from_env(name: str, default: str) -> Path:
@@ -119,4 +133,20 @@ def get_settings() -> Settings:
         ),
         job_history_limit=_int_from_env("TAC_JOB_HISTORY_LIMIT", 100, minimum=1),
         db_busy_timeout_ms=_int_from_env("TAC_DB_BUSY_TIMEOUT_MS", 5_000, minimum=0),
+        scheduler_enabled=_bool_from_env("TAC_SCHEDULER_ENABLED", False),
+        schedule_run_cron=os.environ.get("TAC_SCHEDULE_RUN_CRON", "0 8 * * *").strip(),
+        schedule_timezone=os.environ.get("TAC_SCHEDULE_TIMEZONE", "UTC").strip(),
+        scheduler_poll_seconds=_float_from_env("TAC_SCHEDULER_POLL_SECONDS", 30, minimum=1),
+        rsshub_enabled=_bool_from_env("TAC_RSSHUB_ENABLED", False),
+        rsshub_instance=os.environ.get("TAC_RSSHUB_INSTANCE", "http://127.0.0.1:1200").strip(),
+        rsshub_startup_check=_bool_from_env("TAC_RSSHUB_STARTUP_CHECK", False),
+        rsshub_strict_startup=_bool_from_env("TAC_RSSHUB_STRICT_STARTUP", False),
+        rsshub_timeout_seconds=_float_from_env("TAC_RSSHUB_TIMEOUT_SECONDS", 30, minimum=1),
+        public_base_url=os.environ.get("TAC_PUBLIC_BASE_URL", "http://127.0.0.1:8000").strip(),
+        public_feed_title=os.environ.get("TAC_PUBLIC_FEED_TITLE", "技术文章精选").strip(),
+        public_feed_description=os.environ.get(
+            "TAC_PUBLIC_FEED_DESCRIPTION", "AI 辅助精选的高质量技术文章"
+        ).strip(),
+        public_feed_language=os.environ.get("TAC_PUBLIC_FEED_LANGUAGE", "zh-CN").strip(),
+        public_feed_ttl_minutes=_int_from_env("TAC_PUBLIC_FEED_TTL_MINUTES", 5, minimum=1),
     )

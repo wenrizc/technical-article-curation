@@ -47,8 +47,10 @@ def validate_sources_yaml(content: str) -> SourcesFile:
     for item in parsed.manual_urls:
         _validate_url(item.url)
     for source in parsed.sources:
-        if source.rss_url:
-            _validate_url(source.rss_url)
+        if source.feed and source.feed.url:
+            _validate_url(source.feed.url)
+        if source.feed and source.feed.instance:
+            _validate_url(source.feed.instance)
         if source.site_url:
             _validate_url(source.site_url)
         for item in source.manual_urls:

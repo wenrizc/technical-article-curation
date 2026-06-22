@@ -1,10 +1,12 @@
 import re
 from pathlib import Path
 
+import feedparser
+import pytest
 from fastapi.testclient import TestClient
+from requests import RequestException
 
-from tac.application.use_cases import manage_articles as articles
-from tac.domain.models import EvaluationResult
+from tac.domain.models import ArticleStatus, EvaluationResult
 from tac.infrastructure.db import store as db
 from tac.main import create_app
 from tac.settings import Settings
@@ -77,6 +79,29 @@ def _seed_accepted(settings: Settings) -> int:
     return article_id
 
 
+def _seed_article(
+    settings: Settings,
+    *,
+    title: str,
+    url: str,
+    source_name: str = "manual",
+    source_publish_policy: str = "full_content",
+) -> int:
+    conn = db.connect(settings.state_db)
+    db.migrate(conn)
+    article_id, _, _ = db.add_candidate(
+        conn,
+        title=title,
+        url=url,
+        source_name=source_name,
+        source_publish_policy=source_publish_policy,
+    )
+    db.record_fetch_success(conn, article_id, f"# {title}\n\nSecret body", {"crawler": "fixture"})
+    db.record_evaluation(conn, article_id, _accepted_result(), settings.model, "{}")
+    conn.close()
+    return article_id
+
+
 def test_admin_page_served_with_csrf(tmp_path):
     app = create_app(_settings(tmp_path))
     with TestClient(app) as client:
@@ -84,6 +109,23 @@ def test_admin_page_served_with_csrf(tmp_path):
 
     assert response.status_code == 200
     assert 'name="tac-csrf"' in response.text
+
+
+def test_rsshub_strict_startup_check_fails_app_start(tmp_path, monkeypatch):
+    def fail(*args, **kwargs):
+        raise RequestException("offline")
+
+    monkeypatch.setattr("tac.main.get", fail)
+    app = create_app(
+        _settings(
+            tmp_path,
+            rsshub_startup_check=True,
+            rsshub_strict_startup=True,
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="rsshub startup check failed"), TestClient(app):
+        pass
 
 
 def test_write_without_csrf_returns_403(tmp_path):
@@ -119,21 +161,18 @@ def test_request_body_too_large_returns_413(tmp_path):
     assert response.status_code == 413
 
 
-def test_admin_summary_and_articles_include_archived(tmp_path):
+def test_admin_summary_and_articles_report_current_statuses(tmp_path):
     settings = _settings(tmp_path)
-    article_id = _seed_accepted(settings)
-    conn = db.connect(settings.state_db)
-    articles.archive_article(conn, article_id)
-    conn.close()
+    _seed_accepted(settings)
     app = create_app(settings)
 
     with TestClient(app) as client:
         summary = client.get("/api/admin/summary").json()
-        page = client.get("/api/admin/articles?status=archived").json()
+        page = client.get("/api/admin/articles?status=accepted").json()
 
-    assert summary["archived"] == 1
+    assert summary["accepted"] == 1
     assert page["total"] == 1
-    assert page["items"][0]["status"] == "archived"
+    assert page["items"][0]["status"] == "accepted"
 
 
 def test_admin_source_names(tmp_path):
@@ -147,36 +186,32 @@ def test_admin_source_names(tmp_path):
     assert response.json()["items"] == ["manual"]
 
 
-def test_admin_archive_unarchive_status_update(tmp_path):
+def test_admin_status_update(tmp_path):
     settings = _settings(tmp_path)
     article_id = _seed_accepted(settings)
     app = create_app(settings)
 
     with TestClient(app) as client:
         token = _csrf(client)
-        archived = client.post(
-            f"/api/admin/articles/{article_id}/archive", headers=_headers(token)
-        ).json()
-        restored = client.post(
-            f"/api/admin/articles/{article_id}/unarchive", headers=_headers(token)
-        ).json()
         rejected = client.post(
             f"/api/admin/articles/{article_id}/status",
             headers=_headers(token),
             json={"status": "rejected"},
         ).json()
 
-    assert archived["status"] == "archived"
-    assert restored["status"] == "accepted"
     assert rejected["status"] == "rejected"
 
 
-def test_public_api_excludes_archived(tmp_path):
+def test_public_api_only_exposes_accepted_articles(tmp_path):
     settings = _settings(tmp_path)
     article_id = _seed_accepted(settings)
     conn = db.connect(settings.state_db)
     slug = conn.execute("SELECT slug FROM articles WHERE id = ?", (article_id,)).fetchone()["slug"]
-    articles.archive_article(conn, article_id)
+    conn.execute(
+        "UPDATE articles SET status = ? WHERE id = ?",
+        (ArticleStatus.low_confidence.value, article_id),
+    )
+    conn.commit()
     conn.close()
     app = create_app(settings)
 
@@ -188,6 +223,90 @@ def test_public_api_excludes_archived(tmp_path):
     assert page["total"] == 0
     assert detail.status_code == 404
     assert index == []
+
+
+def test_public_api_hides_summary_only_markdown(tmp_path):
+    settings = _settings(tmp_path)
+    conn = db.connect(settings.state_db)
+    db.migrate(conn)
+    article_id, _, _ = db.add_candidate(
+        conn,
+        title="Hot",
+        url="https://example.com/hot",
+        source_name="rsshub",
+        source_publish_policy="summary_only",
+    )
+    db.record_fetch_success(conn, article_id, "# Body", {"crawler": "fixture"})
+    db.record_evaluation(conn, article_id, _accepted_result(), settings.model, "{}")
+    slug = conn.execute("SELECT slug FROM articles WHERE id = ?", (article_id,)).fetchone()["slug"]
+    conn.close()
+    app = create_app(settings)
+
+    with TestClient(app) as client:
+        detail = client.get(f"/api/public/articles/{slug}").json()
+
+    assert detail["content_markdown"] is None
+    assert detail["source_publish_policy"] == "summary_only"
+
+
+def test_public_rss_feed_outputs_accepted_articles(tmp_path):
+    settings = _settings(tmp_path, public_base_url="https://curation.example")
+    _seed_article(settings, title="Accepted", url="https://example.com/a")
+    rejected_id = _seed_article(settings, title="Rejected", url="https://example.com/r")
+    conn = db.connect(settings.state_db)
+    conn.execute(
+        "UPDATE articles SET status = ? WHERE id = ?",
+        (ArticleStatus.rejected.value, rejected_id),
+    )
+    conn.commit()
+    conn.close()
+    app = create_app(settings)
+
+    with TestClient(app) as client:
+        response = client.get("/api/public/feed.xml")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/rss+xml")
+    parsed = feedparser.parse(response.content)
+    assert parsed.feed.title == "技术文章精选"
+    assert [entry.title for entry in parsed.entries] == ["Accepted"]
+    assert parsed.entries[0].link.startswith("https://curation.example/api/public/articles/")
+
+
+def test_public_rss_feed_limit_and_etag_304(tmp_path):
+    settings = _settings(tmp_path)
+    _seed_article(settings, title="First", url="https://example.com/1")
+    _seed_article(settings, title="Second", url="https://example.com/2")
+    app = create_app(settings)
+
+    with TestClient(app) as client:
+        first = client.get("/feed.xml?limit=1")
+        cached = client.get("/feed.xml?limit=1", headers={"If-None-Match": first.headers["etag"]})
+
+    assert first.status_code == 200
+    assert cached.status_code == 304
+    parsed = feedparser.parse(first.content)
+    assert len(parsed.entries) == 1
+
+
+def test_public_rss_feed_summary_only_does_not_include_markdown(tmp_path):
+    settings = _settings(tmp_path)
+    _seed_article(
+        settings,
+        title="Summary Only",
+        url="https://example.com/s",
+        source_name="rsshub",
+        source_publish_policy="summary_only",
+    )
+    app = create_app(settings)
+
+    with TestClient(app) as client:
+        response = client.get("/api/public/feed.xml")
+
+    parsed = feedparser.parse(response.content)
+    assert parsed.entries[0].title == "Summary Only"
+    assert "Secret body" not in parsed.entries[0].description
+    assert "推荐理由" in parsed.entries[0].description
 
 
 def test_sources_update_requires_matching_hash_and_valid_yaml(tmp_path):
@@ -206,7 +325,9 @@ def test_sources_update_requires_matching_hash_and_valid_yaml(tmp_path):
             "/api/admin/sources",
             headers=_headers(token),
             json={
-                "content": "sources:\n  - rss_url: ftp://bad\n",
+                "content": (
+                    "sources:\n  - name: bad\n    feed:\n      type: direct\n      url: ftp://bad\n"
+                ),
                 "previous_hash": current["content_hash"],
             },
         )
@@ -225,6 +346,44 @@ def test_sources_update_requires_matching_hash_and_valid_yaml(tmp_path):
     assert (settings.sources_path.with_name("sources.yaml.bak")).exists()
 
 
+def test_preview_rsshub_returns_feed_entries(tmp_path, monkeypatch):
+    settings = _settings(tmp_path, rsshub_instance="http://rsshub.local:1200")
+    app = create_app(settings)
+    feed = b"""<?xml version="1.0"?>
+<rss version="2.0"><channel><item><title>Hot</title><link>https://example.com/hot</link></item></channel></rss>
+"""
+
+    class Response:
+        status_code = 200
+        content = feed
+
+        def raise_for_status(self):
+            return None
+
+    class Session:
+        def get(self, url, headers, timeout, allow_redirects):
+            assert url == "http://rsshub.local:1200/zhihu/hot?limit=1"
+            assert headers == {}
+            assert timeout == (10, 30)
+            assert allow_redirects is True
+            return Response()
+
+    monkeypatch.setattr("tac.web.routers.admin.build_session", lambda: Session())
+
+    with TestClient(app) as client:
+        token = _csrf(client)
+        response = client.post(
+            "/api/admin/sources/preview-rsshub",
+            headers=_headers(token),
+            json={"route": "/zhihu/hot", "params": {"limit": 1}},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["feed_url"] == "http://rsshub.local:1200/zhihu/hot?limit=1"
+    assert payload["entries"] == [{"title": "Hot", "url": "https://example.com/hot"}]
+
+
 def test_retry_fetch_submits_job(tmp_path):
     settings = _settings(tmp_path)
     article_id = _seed_accepted(settings)
@@ -238,3 +397,19 @@ def test_retry_fetch_submits_job(tmp_path):
 
     assert response.status_code == 200
     assert response.json()["kind"] == "retry-fetch"
+
+
+def test_schedules_api_lists_and_triggers_builtin_run(tmp_path):
+    settings = _settings(tmp_path, scheduler_enabled=True, schedule_run_cron="0 8 * * *")
+    app = create_app(settings)
+
+    with TestClient(app) as client:
+        token = _csrf(client)
+        schedules = client.get("/api/admin/schedules").json()
+        triggered = client.post("/api/admin/schedules/run/trigger", headers=_headers(token)).json()
+
+    assert schedules["items"][0]["schedule_id"] == "run"
+    assert schedules["items"][0]["enabled"] is True
+    assert triggered["kind"] == "run"
+    assert triggered["schedule_id"] == "run"
+    assert triggered["trigger"] == "manual"

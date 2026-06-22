@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from openai import OpenAI
@@ -136,11 +137,27 @@ def _articles_for_evaluation(
         f"""
         SELECT * FROM articles
         WHERE id IN ({placeholders})
-          AND status != 'archived'
         ORDER BY id ASC
         """,
         article_ids,
     ).fetchall()
+
+
+def _evaluate_article(
+    settings: Settings,
+    article: sqlite3.Row,
+    content_markdown: str,
+) -> tuple[int, EvaluationResult | None, str | None, EvaluationFailed | Exception | None]:
+    try:
+        result, raw_json = evaluate_with_ai(
+            settings,
+            title=article["title"],
+            url=article["url"],
+            content_markdown=content_markdown,
+        )
+        return int(article["id"]), result, raw_json, None
+    except Exception as exc:
+        return int(article["id"]), None, None, exc
 
 
 def evaluate_pending(
@@ -149,52 +166,63 @@ def evaluate_pending(
     limit: int | None = None,
     article_ids: list[int] | None = None,
 ) -> dict[str, int]:
-    attempted = 0
     accepted = 0
     rejected = 0
     low_confidence = 0
     failed = 0
+    tasks: list[tuple[sqlite3.Row, str]] = []
     for article in _articles_for_evaluation(conn, article_ids):
-        if limit is not None and attempted >= limit:
+        if limit is not None and len(tasks) >= limit:
             break
         fetch = db.latest_successful_fetch(conn, int(article["id"]))
         if not fetch:
             continue
-        attempted += 1
-        try:
-            result, raw_json = evaluate_with_ai(
-                settings,
-                title=article["title"],
-                url=article["url"],
-                content_markdown=fetch["content_markdown"],
-            )
-            db.record_evaluation(conn, int(article["id"]), result, settings.model, raw_json)
-            if result.decision.value == "accept":
-                accepted += 1
-            elif result.decision.value == "reject":
-                rejected += 1
+        tasks.append((article, fetch["content_markdown"]))
+    if not tasks:
+        return {
+            "attempted": 0,
+            "accepted": 0,
+            "rejected": 0,
+            "low_confidence": 0,
+            "failed": 0,
+        }
+
+    max_workers = max(1, settings.evaluate_max_concurrency)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [
+            executor.submit(_evaluate_article, settings, article, content_markdown)
+            for article, content_markdown in tasks
+        ]
+        for future in as_completed(futures):
+            article_id, result, raw_json, error = future.result()
+            if result is not None and raw_json is not None:
+                db.record_evaluation(conn, article_id, result, settings.model, raw_json)
+                if result.decision.value == "accept":
+                    accepted += 1
+                elif result.decision.value == "reject":
+                    rejected += 1
+                else:
+                    low_confidence += 1
+                continue
+            if isinstance(error, EvaluationFailed):
+                db.record_evaluation_failure(
+                    conn,
+                    article_id,
+                    error=str(error),
+                    attempts=error.attempts,
+                    raw_response=error.raw_response,
+                )
             else:
-                low_confidence += 1
-        except EvaluationFailed as exc:
-            db.record_evaluation_failure(
-                conn,
-                int(article["id"]),
-                error=str(exc),
-                attempts=exc.attempts,
-                raw_response=exc.raw_response,
-            )
-            failed += 1
-        except Exception as exc:
-            db.record_evaluation_failure(
-                conn,
-                int(article["id"]),
-                error=str(exc),
-                attempts=1,
-                raw_response=None,
-            )
+                db.record_evaluation_failure(
+                    conn,
+                    article_id,
+                    error=str(error or "AI evaluation failed"),
+                    attempts=1,
+                    raw_response=None,
+                )
             failed += 1
     return {
-        "attempted": attempted,
+        "attempted": len(tasks),
         "accepted": accepted,
         "rejected": rejected,
         "low_confidence": low_confidence,

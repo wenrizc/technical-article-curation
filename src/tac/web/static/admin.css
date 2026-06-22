@@ -195,11 +195,6 @@ td {
   font-size: 12px;
 }
 
-.tag.archived {
-  color: var(--danger);
-  border-color: #efb5ad;
-}
-
 .tag.accepted {
   color: var(--accent);
   border-color: #9ad2ca;
@@ -243,6 +238,35 @@ td {
   font-family: var(--mono);
 }
 
+.rsshub-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr) 96px;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.rsshub-form label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.rsshub-form input,
+.rsshub-form textarea {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.rsshub-params {
+  grid-column: 1 / -1;
+}
+
+#rsshub-params {
+  min-height: 80px;
+  font-family: var(--mono);
+}
+
 .drawer {
   position: fixed;
   inset: 0 0 0 auto;
@@ -283,5 +307,9 @@ td {
   .panel-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .rsshub-form {
+    grid-template-columns: 1fr;
   }
 }
