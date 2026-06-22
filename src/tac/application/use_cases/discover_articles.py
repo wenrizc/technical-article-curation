@@ -3,9 +3,11 @@ from __future__ import annotations
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urljoin, urlsplit
+from xml.etree import ElementTree
 
 import feedparser
+from bs4 import BeautifulSoup
 from requests import Session
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -46,6 +48,15 @@ def _conditional_headers(state: sqlite3.Row | None) -> dict[str, str]:
     return headers
 
 
+def _request_timeout(settings: Settings, feed: FeedConfig | None) -> tuple[int, float]:
+    """按信源类型选择 (connect, read) 超时。rsshub/listing 走各自配置,其余默认 30s。"""
+    if feed and feed.type == "rsshub":
+        return (10, settings.rsshub_timeout_seconds)
+    if feed and feed.type == "listing":
+        return (10, settings.listing_timeout_seconds)
+    return (10, 30)
+
+
 @dataclass(frozen=True)
 class SourceDiscoveryResult:
     source_name: str
@@ -68,11 +79,108 @@ def build_rsshub_feed_url(feed: FeedConfig, settings: Settings) -> str:
 def build_feed_url(source: SourceConfig, settings: Settings) -> str:
     if source.feed is None:
         raise ValueError("source feed is required")
-    if source.feed.type == "direct":
+    feed_type = source.feed.type
+    if feed_type in {"direct", "sitemap"}:
         return source.feed.url or ""
-    if not settings.rsshub_enabled:
-        raise ValueError("rsshub is disabled")
-    return build_rsshub_feed_url(source.feed, settings)
+    if feed_type == "listing":
+        if not settings.discovery_listing_enabled:
+            raise ValueError("listing is disabled")
+        return source.feed.url or ""
+    if feed_type == "rsshub":
+        if not settings.rsshub_enabled:
+            raise ValueError("rsshub is disabled")
+        return build_rsshub_feed_url(source.feed, settings)
+    raise ValueError(f"unsupported feed type: {feed_type}")
+
+
+def _parse_feed_body(source: SourceConfig, content: bytes) -> list[tuple[str, str]]:
+    """解析抓取到的信源内容,返回 (title, url) 列表。
+
+    direct/rsshub 复用 feedparser;sitemap 走 ElementTree(urlset 不被 feedparser
+    识别为 feed entries);listing 用 CSS 选择器抽取链接。失败统一抛异常,由调用方
+    记录为 source failed。
+    """
+    feed = source.feed
+    if feed is None:
+        raise ValueError("source feed is required")
+    if feed.type == "listing":
+        return _parse_listing_body(feed, content)
+    if feed.type == "sitemap":
+        return _parse_sitemap_body(content)
+    parsed = feedparser.parse(content)
+    if getattr(parsed, "bozo", False):
+        bozo_exception = getattr(parsed, "bozo_exception", None)
+        raise ValueError(f"feed parse failed: {bozo_exception}")
+    entries: list[tuple[str, str]] = []
+    for entry in parsed.entries:
+        url = getattr(entry, "link", None)
+        title = getattr(entry, "title", None) or url
+        if url:
+            entries.append((title, url))
+    return entries
+
+
+def _parse_sitemap_body(content: bytes) -> list[tuple[str, str]]:
+    """解析 sitemap.xml 的 urlset,返回 (url, url) 列表。
+
+    feedparser 不识别 sitemap urlset,这里用 ElementTree 手动解析。<loc> 可能带
+    sitemap namespace,也兼容无 namespace 的写法;标题在 sitemap 中通常缺失,回退为 URL。
+    """
+    try:
+        root = ElementTree.fromstring(content)
+    except ElementTree.ParseError as exc:
+        raise ValueError(f"sitemap parse failed: {exc}") from exc
+    # namespace 形如 {http://www.sitemaps.org/schemas/sitemap/0.9}
+    namespace = ""
+    if root.tag.startswith("{"):
+        namespace = root.tag.split("}", 1)[0] + "}"
+    locations = [node.text for node in root.iter(f"{namespace}loc")]
+    entries: list[tuple[str, str]] = []
+    for loc in locations:
+        url = (loc or "").strip()
+        if url:
+            entries.append((url, url))
+    return entries
+
+
+def _parse_listing_body(feed: FeedConfig, content: bytes) -> list[tuple[str, str]]:
+    """从 HTML 列表页抽取文章链接。
+
+    使用 link_selector 选出文章锚点,base_url 或 feed.url 的 origin 解析相对链接,
+    url_patterns 非空时只保留 URL 含任一子串的链接。标题优先用 title_selector,
+    否则取锚点文本,都没有则用 URL。
+    """
+    soup = BeautifulSoup(content, "lxml")
+    base = feed.base_url
+    if not base and feed.url:
+        # 相对链接默认按列表页 origin 解析,而非整页 URL,避免带上路径段。
+        split = urlsplit(feed.url)
+        base = f"{split.scheme}://{split.netloc}"
+    link_nodes = soup.select(feed.link_selector or "a")
+    title_nodes = (
+        soup.select(feed.title_selector)
+        if feed.title_selector and feed.title_selector.strip()
+        else None
+    )
+    patterns = [p.strip() for p in feed.url_patterns if p and p.strip()]
+    entries: list[tuple[str, str]] = []
+    for index, node in enumerate(link_nodes):
+        href = node.get("href")
+        if not href:
+            continue
+        href = href.strip()
+        if not href or href.startswith("#") or href.lower().startswith(("javascript:", "mailto:")):
+            continue
+        resolved = urljoin(base or "", href) if base else href
+        if patterns and not any(pattern in resolved for pattern in patterns):
+            continue
+        title = None
+        if title_nodes is not None and index < len(title_nodes):
+            title = title_nodes[index].get_text(strip=True) or None
+        if not title:
+            title = node.get_text(strip=True) or resolved
+        entries.append((title, resolved))
+    return entries
 
 
 def _discover_source(
@@ -83,11 +191,7 @@ def _discover_source(
     modified = state["modified"] if state else None
     try:
         feed_url = build_feed_url(source, settings)
-        timeout = (
-            (10, settings.rsshub_timeout_seconds)
-            if source.feed and source.feed.type == "rsshub"
-            else (10, 30)
-        )
+        timeout = _request_timeout(settings, source.feed)
         response = session.get(
             feed_url,
             headers=_conditional_headers(state),
@@ -106,10 +210,7 @@ def _discover_source(
                 entries=[],
             )
         response.raise_for_status()
-        parsed = feedparser.parse(response.content)
-        if getattr(parsed, "bozo", False):
-            bozo_exception = getattr(parsed, "bozo_exception", None)
-            raise ValueError(f"feed parse failed: {bozo_exception}")
+        entries = _parse_feed_body(source, response.content)
         etag = response.headers.get("ETag") or etag
         modified = response.headers.get("Last-Modified") or modified
     except Exception as exc:
@@ -124,12 +225,6 @@ def _discover_source(
             entries=[],
         )
 
-    entries = []
-    for entry in parsed.entries:
-        url = getattr(entry, "link", None)
-        title = getattr(entry, "title", None) or url
-        if url:
-            entries.append((title, url))
     return SourceDiscoveryResult(
         source_name=source.name,
         source_tags=source.tags,

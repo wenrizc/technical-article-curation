@@ -19,14 +19,6 @@ def _with_conn(settings: Settings, fn: Callable[[Any], dict[str, Any] | list[str
         conn.close()
 
 
-def run_migrate(settings: Settings) -> dict[str, object]:
-    def _run(conn):
-        applied = db.migrate(conn)
-        return {"database": str(settings.state_db), "applied": applied}
-
-    return _with_conn(settings, _run)
-
-
 def run_discover(settings: Settings) -> dict[str, int]:
     def _run(conn):
         db.migrate(conn)

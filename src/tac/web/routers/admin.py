@@ -11,14 +11,18 @@ from tac.application import pipeline
 from tac.application.jobs import JobConflict, JobManager, JobNotFound, JobQueueFull
 from tac.application.scheduler import SchedulerService
 from tac.application.use_cases import manage_articles as articles
-from tac.application.use_cases.discover_articles import build_rsshub_feed_url, build_session
+from tac.application.use_cases.discover_articles import (
+    _parse_feed_body,
+    build_rsshub_feed_url,
+    build_session,
+)
 from tac.application.use_cases.manage_sources import (
     SourceConflict,
     SourceValidationError,
     read_sources_yaml,
     save_sources_yaml,
 )
-from tac.domain.models import ArticleStatus, FeedConfig
+from tac.domain.models import ArticleStatus, FeedConfig, SourceConfig
 from tac.infrastructure.db import store as db
 from tac.web.deps import db_conn, job_manager_from_request, settings_from_request
 
@@ -38,6 +42,20 @@ class RssHubPreviewRequest(BaseModel):
     route: str
     instance: str | None = None
     params: dict[str, str | int | bool] = Field(default_factory=dict)
+    limit: int = 10
+
+
+class SitemapPreviewRequest(BaseModel):
+    url: str
+    limit: int = 10
+
+
+class ListingPreviewRequest(BaseModel):
+    url: str
+    link_selector: str
+    title_selector: str | None = None
+    url_patterns: list[str] = Field(default_factory=list)
+    base_url: str | None = None
     limit: int = 10
 
 
@@ -228,6 +246,58 @@ def preview_rsshub(payload: RssHubPreviewRequest, request: Request) -> dict[str,
         if url:
             entries.append({"title": title, "url": url})
     return {"status": "success", "feed_url": feed_url, "entries": entries}
+
+
+@router.post("/sources/preview-sitemap")
+def preview_sitemap(payload: SitemapPreviewRequest) -> dict[str, object]:
+    try:
+        feed = FeedConfig(type="sitemap", url=payload.url)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
+        response = build_session().get(
+            feed.url or "",
+            headers={},
+            timeout=(10, 30),
+            allow_redirects=True,
+        )
+        response.raise_for_status()
+        parsed_entries = _parse_feed_body(SourceConfig(name="preview", feed=feed), response.content)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    max_entries = max(1, min(payload.limit, 50))
+    entries = [{"title": title, "url": url} for title, url in parsed_entries[:max_entries]]
+    return {"status": "success", "feed_url": feed.url, "entries": entries}
+
+
+@router.post("/sources/preview-listing")
+def preview_listing(payload: ListingPreviewRequest, request: Request) -> dict[str, object]:
+    settings = settings_from_request(request)
+    try:
+        feed = FeedConfig(
+            type="listing",
+            url=payload.url,
+            link_selector=payload.link_selector,
+            title_selector=payload.title_selector,
+            url_patterns=payload.url_patterns,
+            base_url=payload.base_url,
+        )
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
+        response = build_session().get(
+            feed.url or "",
+            headers={},
+            timeout=(10, settings.listing_timeout_seconds),
+            allow_redirects=True,
+        )
+        response.raise_for_status()
+        parsed_entries = _parse_feed_body(SourceConfig(name="preview", feed=feed), response.content)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    max_entries = max(1, min(payload.limit, 50))
+    entries = [{"title": title, "url": url} for title, url in parsed_entries[:max_entries]]
+    return {"status": "success", "feed_url": feed.url, "entries": entries}
 
 
 @router.get("/jobs")

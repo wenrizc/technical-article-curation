@@ -122,6 +122,60 @@
 
       <section class="panel">
         <div class="panel-heading">
+          <h2>Sitemap Preview</h2>
+          <button id="preview-sitemap" class="primary">Preview</button>
+        </div>
+        <div class="rsshub-form">
+          <label>
+            Sitemap URL
+            <input id="sitemap-url" type="url" placeholder="https://example.com/sitemap.xml" />
+          </label>
+          <label>
+            Limit
+            <input id="sitemap-limit" type="number" min="1" max="50" value="10" />
+          </label>
+        </div>
+        <p id="sitemap-status" class="muted"></p>
+        <div id="sitemap-preview-list" class="list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>Listing Preview</h2>
+          <button id="preview-listing" class="primary">Preview</button>
+        </div>
+        <div class="rsshub-form">
+          <label>
+            Listing URL
+            <input id="listing-url" type="url" placeholder="https://example.com/blog" />
+          </label>
+          <label>
+            Link Selector
+            <input id="listing-link-selector" type="text" placeholder="main article a.post-link" />
+          </label>
+          <label>
+            Title Selector (optional)
+            <input id="listing-title-selector" type="text" placeholder="main article h2" />
+          </label>
+          <label>
+            Base URL (optional)
+            <input id="listing-base-url" type="url" placeholder="https://example.com" />
+          </label>
+          <label>
+            Limit
+            <input id="listing-limit" type="number" min="1" max="50" value="10" />
+          </label>
+          <label class="rsshub-params">
+            URL Patterns (newline separated)
+            <textarea id="listing-url-patterns" spellcheck="false"></textarea>
+          </label>
+        </div>
+        <p id="listing-status" class="muted"></p>
+        <div id="listing-preview-list" class="list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
           <h2>Sources YAML</h2>
           <button id="save-sources" class="primary">Save</button>
         </div>

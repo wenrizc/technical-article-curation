@@ -274,3 +274,144 @@ sources:
     assert result["found"] == 0
     assert state["last_status"] == "failed"
     assert "rsshub is disabled" in state["last_error"]
+
+
+def test_discover_sitemap_parses_urlset_and_inserts_candidates(tmp_path, monkeypatch):
+    settings = _settings(
+        tmp_path,
+        """
+sources:
+  - name: fowler
+    feed:
+      type: sitemap
+      url: https://martinfowler.com/sitemap.xml
+""",
+    )
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    sitemap = b"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://martinfowler.com/articles/refactoring.html</loc></url>
+  <url><loc>https://martinfowler.com/articles/microservices.html</loc></url>
+</urlset>
+"""
+    session = FakeSession([FakeResponse(content=sitemap)])
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
+
+    result = discover_candidates(settings, conn)
+    state = db.get_source_state(conn, "fowler")
+    rows = conn.execute(
+        "SELECT url FROM articles WHERE source_name = 'fowler' ORDER BY url"
+    ).fetchall()
+
+    assert result["inserted"] == 2
+    assert state["last_status"] == "success"
+    assert [row["url"] for row in rows] == [
+        "https://martinfowler.com/articles/microservices.html",
+        "https://martinfowler.com/articles/refactoring.html",
+    ]
+
+
+def test_discover_sitemap_uses_conditional_headers(tmp_path, monkeypatch):
+    settings = _settings(
+        tmp_path,
+        """
+sources:
+  - name: fowler
+    feed:
+      type: sitemap
+      url: https://martinfowler.com/sitemap.xml
+""",
+    )
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    db.record_source_state(
+        conn,
+        source_name="fowler",
+        etag='"abc"',
+        modified="Wed, 01 Jan 2025 00:00:00 GMT",
+        last_status="success",
+    )
+    session = FakeSession([FakeResponse(status_code=304)])
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
+
+    result = discover_candidates(settings, conn)
+    state = db.get_source_state(conn, "fowler")
+
+    assert result["sources_not_modified"] == 1
+    assert state["last_status"] == "not_modified"
+    assert session.calls[0]["headers"]["If-None-Match"] == '"abc"'
+
+
+def test_discover_listing_extracts_links_via_selector(tmp_path, monkeypatch):
+    settings = _settings(
+        tmp_path,
+        """
+sources:
+  - name: blog
+    feed:
+      type: listing
+      url: https://example.com/blog
+      link_selector: "main article a.post-link"
+      url_patterns: ["/blog/2024"]
+""",
+    )
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    html = b"""<!doctype html><html><body>
+      <main>
+        <article><a class="post-link" href="/blog/2024/foo">Foo</a></article>
+        <article><a class="post-link" href="/blog/2023/bar">Bar</a></article>
+        <article><a class="post-link" href="https://example.com/blog/2024/baz">Baz</a></article>
+        <article><a class="other" href="/blog/2024/qux">Ignored</a></article>
+      </main>
+    </body></html>"""
+    session = FakeSession([FakeResponse(content=html)])
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
+
+    result = discover_candidates(settings, conn)
+    rows = conn.execute(
+        "SELECT url FROM articles WHERE source_name = 'blog' ORDER BY url"
+    ).fetchall()
+    urls = [row["url"] for row in rows]
+
+    assert result["inserted"] == 2
+    # 相对链接按 listing url 的 origin 解析;url_patterns 过滤掉 2023 那条和 .other 那条。
+    assert "https://example.com/blog/2024/foo" in urls
+    assert "https://example.com/blog/2024/baz" in urls
+    assert all("/blog/2023/" not in url for url in urls)
+
+
+def test_discover_listing_disabled_records_source_failure(tmp_path, monkeypatch):
+    settings = _settings(
+        tmp_path,
+        """
+sources:
+  - name: blog
+    feed:
+      type: listing
+      url: https://example.com/blog
+      link_selector: "main a"
+""",
+    )
+    settings = Settings(**{**settings.__dict__, "discovery_listing_enabled": False})
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    session = FakeSession([])
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
+
+    result = discover_candidates(settings, conn)
+    state = db.get_source_state(conn, "blog")
+
+    assert result["sources_failed"] == 1
+    assert result["found"] == 0
+    assert state["last_status"] == "failed"
+    assert "listing is disabled" in state["last_error"]

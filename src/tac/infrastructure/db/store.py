@@ -48,11 +48,6 @@ def migrate(conn: sqlite3.Connection, migrations_dir: Path = Path("migrations"))
     return applied
 
 
-def latest_schema_versions(conn: sqlite3.Connection) -> list[str]:
-    rows = conn.execute("SELECT version FROM schema_migrations ORDER BY version").fetchall()
-    return [row["version"] for row in rows]
-
-
 def create_job_run(
     conn: sqlite3.Connection,
     *,
@@ -433,16 +428,6 @@ def accepted_articles_for_publish(conn: sqlite3.Connection) -> list[sqlite3.Row]
               WHERE article_id = a.id
           )
         ORDER BY a.collected_at DESC, a.id DESC
-        """
-    ).fetchall()
-
-
-def source_state_report(conn: sqlite3.Connection) -> list[sqlite3.Row]:
-    return conn.execute(
-        """
-        SELECT source_name, last_status, last_error, checked_at
-        FROM source_state
-        ORDER BY source_name ASC
         """
     ).fetchall()
 

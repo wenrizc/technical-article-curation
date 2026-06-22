@@ -69,22 +69,35 @@ class ManualUrl(BaseModel):
 
 
 class FeedConfig(BaseModel):
-    type: Literal["direct", "rsshub"]
+    type: Literal["direct", "rsshub", "sitemap", "listing"]
     url: str | None = None
     route: str | None = None
     instance: str | None = None
     params: dict[str, str | int | bool] = Field(default_factory=dict)
+    # listing 类型专用:从列表页抽取文章链接的 CSS 选择器。
+    link_selector: str | None = None
+    # listing 可选:抽取标题的 CSS 选择器,默认取 <a> 自身文本。
+    title_selector: str | None = None
+    # listing 可选:只保留 URL 中包含任一子串的链接,空表示不过滤。
+    url_patterns: list[str] = Field(default_factory=list)
+    # listing 可选:解析相对链接的基准地址,默认取 listing url 的 origin。
+    base_url: str | None = None
 
     model_config = {"extra": "forbid"}
 
+    @staticmethod
+    def _require_http_url(field: str, value: str | None) -> None:
+        """校验字段必须是 http/https 的完整 URL。"""
+        if not value:
+            raise ValueError(f"{field} is required")
+        parsed = urlparse(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError(f"{field} must be an http or https URL")
+
     @model_validator(mode="after")
     def validate_feed(self) -> FeedConfig:
-        if self.type == "direct":
-            if not self.url:
-                raise ValueError("feed.url is required when feed.type is direct")
-            parsed = urlparse(self.url)
-            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-                raise ValueError("feed.url must be an http or https URL")
+        if self.type in {"direct", "sitemap"}:
+            self._require_http_url("feed.url", self.url)
         if self.type == "rsshub":
             if not self.route:
                 raise ValueError("feed.route is required when feed.type is rsshub")
@@ -96,6 +109,14 @@ class FeedConfig(BaseModel):
                 or parsed_route.fragment
             ):
                 raise ValueError("feed.route must be an absolute path without host or fragment")
+        if self.type == "listing":
+            self._require_http_url("feed.url", self.url)
+            if not (self.link_selector and self.link_selector.strip()):
+                raise ValueError(
+                    "feed.link_selector is required and must not be empty when feed.type is listing"
+                )
+            if self.base_url is not None:
+                self._require_http_url("feed.base_url", self.base_url)
         if self.instance:
             parsed_instance = urlparse(self.instance)
             if parsed_instance.scheme not in {"http", "https"} or not parsed_instance.netloc:

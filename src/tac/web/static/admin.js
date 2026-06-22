@@ -243,6 +243,56 @@ async function previewRsshub() {
       .join("") || '<p class="muted">No entries</p>';
 }
 
+async function previewSitemap() {
+  const payload = await api("/api/admin/sources/preview-sitemap", {
+    method: "POST",
+    body: JSON.stringify({
+      url: $("#sitemap-url").value.trim(),
+      limit: Number($("#sitemap-limit").value || "10"),
+    }),
+  });
+  $("#sitemap-status").textContent = payload.feed_url;
+  $("#sitemap-preview-list").innerHTML =
+    payload.entries
+      .map(
+        (entry) => `
+          <div class="list-item">
+            <b>${escapeHtml(entry.title)}</b><br>
+            <a href="${escapeHtml(entry.url)}" target="_blank" rel="noreferrer">${escapeHtml(entry.url)}</a>
+          </div>`,
+      )
+      .join("") || '<p class="muted">No entries</p>';
+}
+
+async function previewListing() {
+  const patternsText = $("#listing-url-patterns").value.trim();
+  const url_patterns = patternsText
+    ? patternsText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+    : [];
+  const payload = await api("/api/admin/sources/preview-listing", {
+    method: "POST",
+    body: JSON.stringify({
+      url: $("#listing-url").value.trim(),
+      link_selector: $("#listing-link-selector").value.trim(),
+      title_selector: $("#listing-title-selector").value.trim() || null,
+      base_url: $("#listing-base-url").value.trim() || null,
+      url_patterns,
+      limit: Number($("#listing-limit").value || "10"),
+    }),
+  });
+  $("#listing-status").textContent = payload.feed_url;
+  $("#listing-preview-list").innerHTML =
+    payload.entries
+      .map(
+        (entry) => `
+          <div class="list-item">
+            <b>${escapeHtml(entry.title)}</b><br>
+            <a href="${escapeHtml(entry.url)}" target="_blank" rel="noreferrer">${escapeHtml(entry.url)}</a>
+          </div>`,
+      )
+      .join("") || '<p class="muted">No entries</p>';
+}
+
 async function showDetail(id) {
   const detail = await api(`/api/admin/articles/${id}`);
   $("#detail-content").textContent = JSON.stringify(detail, null, 2);
@@ -392,6 +442,26 @@ function bindEvents() {
       $("#rsshub-status").textContent = errorText(error);
     } finally {
       $("#preview-rsshub").disabled = false;
+    }
+  });
+  $("#preview-sitemap").addEventListener("click", async () => {
+    try {
+      $("#preview-sitemap").disabled = true;
+      await previewSitemap();
+    } catch (error) {
+      $("#sitemap-status").textContent = errorText(error);
+    } finally {
+      $("#preview-sitemap").disabled = false;
+    }
+  });
+  $("#preview-listing").addEventListener("click", async () => {
+    try {
+      $("#preview-listing").disabled = true;
+      await previewListing();
+    } catch (error) {
+      $("#listing-status").textContent = errorText(error);
+    } finally {
+      $("#preview-listing").disabled = false;
     }
   });
   $("#close-detail").addEventListener("click", () => {

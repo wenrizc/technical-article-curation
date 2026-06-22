@@ -208,7 +208,7 @@ AI 响应必须通过以下严格 schema 校验：
 
 内部状态存储在 SQLite 中，默认路径为 `data/state.db`。
 
-迁移文件位于 `migrations/*.sql`。
+迁移文件位于 `migrations/*.sql`。当前没有独立迁移任务入口；服务启动和每次流水线阶段运行前会自动执行未应用迁移。
 
 核心表：
 
