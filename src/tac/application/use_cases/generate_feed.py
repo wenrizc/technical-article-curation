@@ -83,6 +83,7 @@ def _generate_with_feedgen(
         entry.guid(url, permalink=True)
         entry.title(str(item.get("title") or ""))
         entry.link(href=url)
+        entry.source(url=str(item.get("url") or ""), title=str(item.get("source") or ""))
         entry.description(html.escape(_description(item)))
         published = _item_time(item)
         if published is not None:
@@ -134,7 +135,8 @@ def generate_public_feed(
 ) -> PublicFeed:
     page = articles.list_public_articles(conn, page=1, page_size=limit)
     items = page.items
-    last_build = next((time for item in items if (time := _item_time(item)) is not None), None)
+    item_times = [time for item in items if (time := _item_time(item)) is not None]
+    last_build = max(item_times, default=None)
     content = _generate_with_feedgen(settings, items, last_build) or _generate_with_stdlib(
         settings, items, last_build
     )

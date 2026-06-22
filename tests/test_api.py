@@ -1,4 +1,6 @@
 import re
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 import feedparser
@@ -271,6 +273,8 @@ def test_public_rss_feed_outputs_accepted_articles(tmp_path):
     assert parsed.feed.title == "技术文章精选"
     assert [entry.title for entry in parsed.entries] == ["Accepted"]
     assert parsed.entries[0].link.startswith("https://curation.example/api/public/articles/")
+    assert parsed.entries[0].source.title == "manual"
+    assert parsed.entries[0].source.href == "https://example.com/a"
 
 
 def test_public_rss_feed_limit_and_etag_304(tmp_path):
@@ -287,6 +291,42 @@ def test_public_rss_feed_limit_and_etag_304(tmp_path):
     assert cached.status_code == 304
     parsed = feedparser.parse(first.content)
     assert len(parsed.entries) == 1
+
+
+def test_public_rss_feed_last_modified_uses_latest_item_time(tmp_path):
+    settings = _settings(tmp_path)
+    recent_id = _seed_article(settings, title="Recent Fallback", url="https://example.com/recent")
+    old_id = _seed_article(settings, title="Old Collected", url="https://example.com/old")
+    conn = db.connect(settings.state_db)
+    conn.execute(
+        """
+        UPDATE articles
+        SET collected_at = NULL,
+            updated_at = '2026-06-22T10:00:00+00:00',
+            created_at = '2026-06-20T10:00:00+00:00'
+        WHERE id = ?
+        """,
+        (recent_id,),
+    )
+    conn.execute(
+        """
+        UPDATE articles
+        SET collected_at = '2026-06-21T10:00:00+00:00',
+            updated_at = '2026-06-21T10:00:00+00:00'
+        WHERE id = ?
+        """,
+        (old_id,),
+    )
+    conn.commit()
+    conn.close()
+    app = create_app(settings)
+
+    with TestClient(app) as client:
+        response = client.get("/feed.xml")
+
+    assert response.status_code == 200
+    last_modified = parsedate_to_datetime(response.headers["last-modified"])
+    assert last_modified == datetime(2026, 6, 22, 10, 0, tzinfo=UTC)
 
 
 def test_public_rss_feed_summary_only_does_not_include_markdown(tmp_path):

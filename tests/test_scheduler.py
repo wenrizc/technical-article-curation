@@ -48,6 +48,14 @@ def test_cron_schedule_matches_standard_fields():
     assert not schedule.matches(datetime(2026, 6, 22, 8, 10, tzinfo=ZoneInfo("UTC")))
 
 
+def test_cron_schedule_uses_or_when_month_day_and_weekday_are_restricted():
+    schedule = CronSchedule.parse("0 8 1 * 1")
+
+    assert schedule.matches(datetime(2026, 6, 1, 8, 0, tzinfo=ZoneInfo("UTC")))
+    assert schedule.matches(datetime(2026, 6, 22, 8, 0, tzinfo=ZoneInfo("UTC")))
+    assert not schedule.matches(datetime(2026, 6, 23, 8, 0, tzinfo=ZoneInfo("UTC")))
+
+
 def test_cron_schedule_rejects_invalid_expression():
     with pytest.raises(CronExpressionError):
         CronSchedule.parse("0 8 * *")

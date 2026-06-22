@@ -4,8 +4,10 @@ import asyncio
 from collections.abc import Callable
 from contextlib import closing, suppress
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from croniter import CroniterBadDateError, CroniterError, croniter
 
 from tac.application import pipeline
 from tac.application.jobs import JobConflict, JobManager, JobQueueFull, JobTrigger
@@ -20,44 +22,32 @@ class CronExpressionError(ValueError):
 @dataclass(frozen=True)
 class CronSchedule:
     expression: str
-    minutes: frozenset[int]
-    hours: frozenset[int]
-    month_days: frozenset[int]
-    months: frozenset[int]
-    weekdays: frozenset[int]
 
     @classmethod
     def parse(cls, expression: str) -> CronSchedule:
         parts = expression.split()
         if len(parts) != 5:
             raise CronExpressionError("cron expression must have 5 fields")
-        return cls(
-            expression=expression,
-            minutes=_parse_field(parts[0], minimum=0, maximum=59),
-            hours=_parse_field(parts[1], minimum=0, maximum=23),
-            month_days=_parse_field(parts[2], minimum=1, maximum=31),
-            months=_parse_field(parts[3], minimum=1, maximum=12),
-            weekdays=_parse_weekday_field(parts[4]),
-        )
+        try:
+            croniter(expression)
+        except CroniterError as exc:
+            raise CronExpressionError(str(exc)) from exc
+        return cls(expression=expression)
 
     def matches(self, value: datetime) -> bool:
-        cron_weekday = (value.weekday() + 1) % 7
-        return (
-            value.minute in self.minutes
-            and value.hour in self.hours
-            and value.day in self.month_days
-            and value.month in self.months
-            and cron_weekday in self.weekdays
-        )
+        return croniter.match(self.expression, value, day_or=True, precision_in_seconds=60)
 
     def next_after(self, value: datetime) -> datetime | None:
-        candidate = (value + timedelta(minutes=1)).replace(second=0, microsecond=0)
-        deadline = candidate + timedelta(days=366)
-        while candidate <= deadline:
-            if self.matches(candidate):
-                return candidate
-            candidate += timedelta(minutes=1)
-        return None
+        try:
+            return croniter(
+                self.expression,
+                value,
+                ret_type=datetime,
+                day_or=True,
+                max_years_between_matches=1,
+            ).get_next(datetime)
+        except CroniterBadDateError:
+            return None
 
 
 @dataclass(frozen=True)
@@ -179,42 +169,6 @@ def _load_schedules(settings: Settings) -> list[ScheduleDefinition]:
             runner_factory=lambda: lambda: pipeline.run_all(settings),
         )
     ]
-
-
-def _parse_field(raw: str, *, minimum: int, maximum: int) -> frozenset[int]:
-    values: set[int] = set()
-    for token in raw.split(","):
-        values.update(_parse_token(token, minimum=minimum, maximum=maximum))
-    if not values:
-        raise CronExpressionError("cron field cannot be empty")
-    return frozenset(values)
-
-
-def _parse_weekday_field(raw: str) -> frozenset[int]:
-    values = _parse_field(raw, minimum=0, maximum=7)
-    normalized = {0 if value == 7 else value for value in values}
-    return frozenset(normalized)
-
-
-def _parse_token(raw: str, *, minimum: int, maximum: int) -> set[int]:
-    if not raw:
-        raise CronExpressionError("cron field contains an empty token")
-    base, step = raw, 1
-    if "/" in raw:
-        base, step_raw = raw.split("/", 1)
-        step = int(step_raw)
-        if step <= 0:
-            raise CronExpressionError("cron step must be positive")
-    if base == "*":
-        start, end = minimum, maximum
-    elif "-" in base:
-        start_raw, end_raw = base.split("-", 1)
-        start, end = int(start_raw), int(end_raw)
-    else:
-        start = end = int(base)
-    if start < minimum or end > maximum or start > end:
-        raise CronExpressionError(f"cron value must be between {minimum} and {maximum}")
-    return set(range(start, end + 1, step))
 
 
 def _job_row_to_dict(row) -> dict[str, object]:
