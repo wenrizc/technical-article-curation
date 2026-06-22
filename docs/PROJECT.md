@@ -47,7 +47,7 @@
 
 ## 信源
 
-默认信源配置位于 `config/sources.yaml`。当前接入的是已验证可访问的 RSS/Atom 信源，来源包括工程团队、技术社区和个人技术博客。
+默认信源配置位于 `config/sources.yaml`。当前接入的是已验证可访问的 RSS/Atom 信源，来源包括工程团队、技术社区和个人技术博客。平台型来源可以通过 RSSHub 作为上游 feed 接入。
 
 已接入示例：
 
@@ -67,7 +67,25 @@
 - Brendan Gregg
 - 阮一峰的网络日志
 
-信源配置支持 RSS/Atom 和手动 URL。手动 URL 应指向具体文章页面，而不是站点首页。
+信源配置统一使用 `feed` 字段。`feed.type=direct` 直接请求 RSS/Atom URL，`feed.type=rsshub` 通过 RSSHub route 生成 feed URL。手动 URL 应指向具体文章页面，而不是站点首页。
+
+```yaml
+sources:
+  - name: "Cloudflare Blog"
+    site_url: "https://blog.cloudflare.com/"
+    feed:
+      type: "direct"
+      url: "https://blog.cloudflare.com/rss/"
+
+  - name: "知乎热榜"
+    site_url: "https://www.zhihu.com/hot"
+    publish_policy: "summary_only"
+    feed:
+      type: "rsshub"
+      route: "/zhihu/hot"
+      params:
+        limit: 20
+```
 
 ## 架构
 
@@ -94,8 +112,9 @@ uv run uvicorn tac.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 - `/admin`：本地轻量管理控制台。
-- `/api/admin/*`：管理 API，可查询全部文章，包括 `archived`。
-- `/api/public/*`：公开 API，始终排除 `archived`。
+- `/api/admin/*`：管理 API，可查询和调整内部文章状态。
+- `/api/public/*`：公开 API，只返回已收录的 `accepted` 文章。
+- `/feed.xml` 和 `/api/public/feed.xml`：公开 RSS 2.0 订阅。
 
 管理任务接口用于触发后台任务：
 
@@ -117,7 +136,7 @@ uv run uvicorn tac.main:app --host 127.0.0.1 --port 8000 --reload
 - `TAC_SOURCES_PATH`：信源配置路径，默认 `config/sources.yaml`。
 - `TAC_PUBLIC_DIR`：发布目录，默认 `public`。
 - `TAC_MAX_RETRY`：最大重试次数，默认 `3`。
-- `TAC_CRAWLER4AI_ENABLED`：默认启用。生产文章抓取只使用 Crawler4AI；关闭它主要用于测试或 fixture 驱动运行。
+- `TAC_CRAWLER4AI_ENABLED`：默认启用。生产文章抓取只使用 Crawler4AI；关闭它主要用于测试或 fixture 驱动运行。生产运行请安装 `--extra crawler`。
 - `TAC_FETCH_DELAY_SECONDS`：每次文章抓取后等待的秒数，默认 `1`。
 - `TAC_EVALUATION_MAX_ATTEMPTS`：每篇文章 AI 评估最多尝试次数，默认 `3`。
 - `TAC_PROMPT_LANGUAGE`：提示词语言，当前仅支持 `zh-CN`。
@@ -129,9 +148,9 @@ uv run uvicorn tac.main:app --host 127.0.0.1 --port 8000 --reload
 - `TAC_HTTP_MAX_CONCURRENCY`：动态 HTTP 请求并发，默认 `16`。
 - `TAC_JOB_MAX_CONCURRENCY`：后台任务并发，默认 `1`。
 - `TAC_JOB_QUEUE_LIMIT`：后台任务排队长度，默认 `8`。
-- `TAC_FETCH_MAX_CONCURRENCY`：抓取并发，默认 `1`。
-- `TAC_EVALUATE_MAX_CONCURRENCY`：评估并发，默认 `1`。
-- `TAC_DISCOVER_MAX_CONCURRENCY`：RSS 发现并发，默认 `2`。
+- `TAC_FETCH_MAX_CONCURRENCY`：阶段内文章抓取并发，默认 `1`。
+- `TAC_EVALUATE_MAX_CONCURRENCY`：阶段内 AI 评估并发，默认 `1`。
+- `TAC_DISCOVER_MAX_CONCURRENCY`：阶段内 RSS 发现并发，默认 `2`。
 - `TAC_MAX_REQUEST_BODY_BYTES`：写请求体大小限制，默认 `1048576`。
 - `TAC_FETCH_TIMEOUT_SECONDS`：单篇文章抓取超时，默认 `90`。
 - `TAC_AI_TIMEOUT_SECONDS`：AI 请求超时，默认 `90`。
@@ -139,10 +158,24 @@ uv run uvicorn tac.main:app --host 127.0.0.1 --port 8000 --reload
 - `TAC_FETCH_MAX_MARKDOWN_BYTES`：抓取 Markdown 大小限制，默认 `2097152`。
 - `TAC_JOB_HISTORY_LIMIT`：内存任务历史保留数量，默认 `100`。
 - `TAC_DB_BUSY_TIMEOUT_MS`：SQLite busy timeout，默认 `5000`。
+- `TAC_SCHEDULER_ENABLED`：启用内置定时调度，默认 `false`。
+- `TAC_SCHEDULE_RUN_CRON`：完整流水线 `run` 的 5 段 cron 表达式，默认 `0 8 * * *`。
+- `TAC_SCHEDULE_TIMEZONE`：定时调度时区，默认 `UTC`。
+- `TAC_SCHEDULER_POLL_SECONDS`：调度器轮询间隔，默认 `30`。
+- `TAC_RSSHUB_ENABLED`：启用 RSSHub feed 来源，默认 `false`。
+- `TAC_RSSHUB_INSTANCE`：默认 RSSHub 实例地址，默认 `http://127.0.0.1:1200`。
+- `TAC_RSSHUB_STARTUP_CHECK`：启动时检查 RSSHub 可达性，默认 `false`。
+- `TAC_RSSHUB_STRICT_STARTUP`：RSSHub 检查失败时阻止应用启动，默认 `false`。
+- `TAC_RSSHUB_TIMEOUT_SECONDS`：RSSHub feed 请求超时时间，默认 `30`。
+- `TAC_PUBLIC_BASE_URL`：公开链接基准地址，默认 `http://127.0.0.1:8000`。
+- `TAC_PUBLIC_FEED_TITLE`：公开 RSS 标题，默认 `技术文章精选`。
+- `TAC_PUBLIC_FEED_DESCRIPTION`：公开 RSS 描述。
+- `TAC_PUBLIC_FEED_LANGUAGE`：公开 RSS 语言，默认 `zh-CN`。
+- `TAC_PUBLIC_FEED_TTL_MINUTES`：公开 RSS TTL，默认 `5`。
 
 ## 发现
 
-RSS/Atom 发现使用带重试能力的 `requests.Session` 处理临时 HTTP 失败。每个信源的最新 `ETag` 和 `Last-Modified` 会记录到 SQLite，后续运行会发送条件请求头。遇到 `304 Not Modified` 时跳过该信源解析。
+Feed 发现使用带重试能力的 `requests.Session` 处理临时 HTTP 失败。普通 RSS/Atom 直接请求 `feed.url`，RSSHub 来源先用 `TAC_RSSHUB_INSTANCE` 和 `feed.route` 拼出 feed URL。每个信源的最新 `ETag` 和 `Last-Modified` 会记录到 SQLite，后续运行会发送条件请求头。遇到 `304 Not Modified` 时跳过该信源解析。
 
 信源级失败会单独记录，不会污染文章状态，也不会阻止手动 URL 或其他信源继续处理。
 
