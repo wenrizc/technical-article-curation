@@ -108,7 +108,7 @@ sources:
 本地运行：
 
 ```powershell
-uv run uvicorn tac.main:app --host 127.0.0.1 --port 8000 --reload
+uv run uvicorn tac.main:app --host 127.0.0.1 --port 1104 --reload
 ```
 
 - `/admin`：本地轻量管理控制台。
@@ -169,7 +169,7 @@ uv run uvicorn tac.main:app --host 127.0.0.1 --port 8000 --reload
 - `TAC_RSSHUB_STARTUP_CHECK`：启动时检查 RSSHub 可达性，默认 `false`。
 - `TAC_RSSHUB_STRICT_STARTUP`：RSSHub 检查失败时阻止应用启动，默认 `false`。
 - `TAC_RSSHUB_TIMEOUT_SECONDS`：RSSHub feed 请求超时时间，默认 `30`。
-- `TAC_PUBLIC_BASE_URL`：公开链接基准地址，默认 `http://127.0.0.1:8000`。
+- `TAC_PUBLIC_BASE_URL`：公开链接基准地址，默认 `http://127.0.0.1:1104`。
 - `TAC_PUBLIC_FEED_TITLE`：公开 RSS 标题，默认 `技术文章精选`。
 - `TAC_PUBLIC_FEED_DESCRIPTION`：公开 RSS 描述。
 - `TAC_PUBLIC_FEED_LANGUAGE`：公开 RSS 语言，默认 `zh-CN`。

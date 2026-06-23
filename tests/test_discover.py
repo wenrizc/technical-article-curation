@@ -103,6 +103,66 @@ def test_discover_records_source_state_and_uses_conditional_headers(tmp_path, mo
     assert state["etag"] == '"def"'
 
 
+def test_discover_strips_invalid_feed_control_chars(tmp_path, monkeypatch):
+    settings = _settings(tmp_path)
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    feed = b"""<?xml version="1.0"?>
+<rss version="2.0"><channel><item>
+  <title>Post</title>
+  <link>https://example.com/post</link>
+  <description>bad \x08 char</description>
+</item></channel></rss>
+"""
+    session = FakeSession([FakeResponse(content=feed)])
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
+
+    result = discover_candidates(settings, conn)
+    article = conn.execute("SELECT * FROM articles WHERE source_name = 'example'").fetchone()
+
+    assert result["inserted"] == 1
+    assert article["url"] == "https://example.com/post"
+
+
+def test_discover_normalizes_feed_entry_urls(tmp_path, monkeypatch):
+    settings = _settings(
+        tmp_path,
+        """
+sources:
+  - name: example
+    site_url: https://example.com/blog/
+    feed:
+      type: direct
+      url: https://example.com/feed.xml
+""",
+    )
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    feed = b"""<?xml version="1.0"?>
+<rss version="2.0"><channel>
+  <item><title>Relative</title><link>/blog/relative</link></item>
+  <item><title>Localhost</title><link>http://localhost:5174/blog/local</link></item>
+</channel></rss>
+"""
+    session = FakeSession([FakeResponse(content=feed)])
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
+
+    result = discover_candidates(settings, conn)
+    rows = conn.execute(
+        "SELECT url FROM articles WHERE source_name = 'example' ORDER BY title"
+    ).fetchall()
+
+    assert result["inserted"] == 2
+    assert [row["url"] for row in rows] == [
+        "https://example.com/blog/local",
+        "https://example.com/blog/relative",
+    ]
+
+
 def test_discover_records_304_without_parsing_entries(tmp_path, monkeypatch):
     conn = db.connect(tmp_path / "state.db")
     db.migrate(conn)

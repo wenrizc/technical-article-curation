@@ -9,6 +9,14 @@ from time import sleep
 from tac.infrastructure.db import store as db
 from tac.settings import Settings
 
+FETCH_HEADERS = {
+    "User-Agent": "technical-article-curation/0.1 (+https://example.invalid)",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+}
+
+_PLAYWRIGHT_CHECKED = False
+_PLAYWRIGHT_FALLBACK_REASON: str | None = None
+
 
 @dataclass(frozen=True)
 class FetchResult:
@@ -20,26 +28,113 @@ class FetchError(RuntimeError):
     pass
 
 
+def _crawler_result(
+    result: object,
+    *,
+    crawler_name: str,
+    fallback_reason: str | None = None,
+    requested_url: str,
+) -> FetchResult:
+    markdown = getattr(result, "markdown", None)
+    if not markdown:
+        error = getattr(result, "error_message", None)
+        suffix = f": {error}" if error else ""
+        raise FetchError(f"{crawler_name} returned no markdown{suffix}")
+    status_code = getattr(result, "status_code", None)
+    final_url = getattr(result, "url", None) or requested_url
+    metadata: dict[str, object] = {
+        "crawler": crawler_name,
+        "final_url": final_url,
+        "status_code": status_code,
+    }
+    if fallback_reason:
+        metadata["fallback_reason"] = fallback_reason
+    return FetchResult(markdown=str(markdown).strip(), metadata=metadata)
+
+
+def _browser_unavailable(exc: Exception) -> bool:
+    message = str(exc)
+    return "Executable doesn't exist" in message and "playwright install" in message
+
+
+async def _playwright_fallback_reason() -> str | None:
+    """预检 Chromium 是否存在,避免每次抓取都先触发浏览器启动失败。"""
+    global _PLAYWRIGHT_CHECKED, _PLAYWRIGHT_FALLBACK_REASON
+    if _PLAYWRIGHT_CHECKED:
+        return _PLAYWRIGHT_FALLBACK_REASON
+
+    _PLAYWRIGHT_CHECKED = True
+    try:
+        from pathlib import Path
+
+        from playwright.async_api import async_playwright  # type: ignore
+    except Exception:
+        return None
+
+    try:
+        async with async_playwright() as playwright:
+            executable_path = playwright.chromium.executable_path
+    except Exception:
+        return None
+    if not Path(executable_path).exists():
+        _PLAYWRIGHT_FALLBACK_REASON = f"playwright chromium executable not found: {executable_path}"
+    return _PLAYWRIGHT_FALLBACK_REASON
+
+
+async def _fetch_with_crawler4ai_http(
+    url: str, *, timeout_seconds: float, fallback_reason: str
+) -> FetchResult:
+    try:
+        from crawl4ai import AsyncWebCrawler  # type: ignore
+        from crawl4ai.async_crawler_strategy import (  # type: ignore
+            AsyncHTTPCrawlerStrategy,
+            HTTPCrawlerConfig,
+        )
+    except Exception as exc:
+        raise FetchError(f"crawler4ai http fallback unavailable: {exc}") from exc
+
+    strategy = AsyncHTTPCrawlerStrategy(
+        HTTPCrawlerConfig(headers=FETCH_HEADERS, follow_redirects=True)
+    )
+    async with AsyncWebCrawler(crawler_strategy=strategy) as crawler:
+        result = await asyncio.wait_for(crawler.arun(url=url), timeout=timeout_seconds)
+        return _crawler_result(
+            result,
+            crawler_name="crawler4ai-http",
+            fallback_reason=fallback_reason,
+            requested_url=url,
+        )
+
+
 async def _fetch_with_crawler4ai(url: str, *, timeout_seconds: float) -> FetchResult:
     try:
         from crawl4ai import AsyncWebCrawler  # type: ignore
     except Exception as exc:
         raise FetchError(f"crawler4ai unavailable: {exc}") from exc
 
-    async with AsyncWebCrawler() as crawler:
-        result = await asyncio.wait_for(crawler.arun(url=url), timeout=timeout_seconds)
-        markdown = getattr(result, "markdown", None)
-        if not markdown:
-            raise FetchError("crawler4ai returned no markdown")
-        status_code = getattr(result, "status_code", None)
-        final_url = getattr(result, "url", None) or url
-        return FetchResult(
-            markdown=str(markdown).strip(),
-            metadata={
-                "crawler": "crawler4ai",
-                "final_url": final_url,
-                "status_code": status_code,
-            },
+    fallback_reason = await _playwright_fallback_reason()
+    if fallback_reason:
+        return await _fetch_with_crawler4ai_http(
+            url,
+            timeout_seconds=timeout_seconds,
+            fallback_reason=fallback_reason,
+        )
+
+    try:
+        async with AsyncWebCrawler() as crawler:
+            result = await asyncio.wait_for(crawler.arun(url=url), timeout=timeout_seconds)
+            return _crawler_result(
+                result,
+                crawler_name="crawler4ai",
+                requested_url=url,
+            )
+    except Exception as exc:
+        if not _browser_unavailable(exc):
+            raise
+        return await _fetch_with_crawler4ai_http(
+            url,
+            timeout_seconds=timeout_seconds,
+            fallback_reason=str(exc).splitlines()[0],
         )
 
 

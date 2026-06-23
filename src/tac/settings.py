@@ -48,7 +48,7 @@ class Settings:
     rsshub_timeout_seconds: float = 30
     discovery_listing_enabled: bool = True
     listing_timeout_seconds: float = 30
-    public_base_url: str = "http://127.0.0.1:8000"
+    public_base_url: str = "http://127.0.0.1:1104"
     public_feed_title: str = "技术文章精选"
     public_feed_description: str = "AI 辅助精选的高质量技术文章"
     public_feed_language: str = "zh-CN"
@@ -148,7 +148,7 @@ def get_settings() -> Settings:
         rsshub_timeout_seconds=_float_from_env("TAC_RSSHUB_TIMEOUT_SECONDS", 30, minimum=1),
         discovery_listing_enabled=_bool_from_env("TAC_DISCOVERY_LISTING_ENABLED", True),
         listing_timeout_seconds=_float_from_env("TAC_LISTING_TIMEOUT_SECONDS", 30, minimum=1),
-        public_base_url=os.environ.get("TAC_PUBLIC_BASE_URL", "http://127.0.0.1:8000").strip(),
+        public_base_url=os.environ.get("TAC_PUBLIC_BASE_URL", "http://127.0.0.1:1104").strip(),
         public_feed_title=os.environ.get("TAC_PUBLIC_FEED_TITLE", "技术文章精选").strip(),
         public_feed_description=os.environ.get(
             "TAC_PUBLIC_FEED_DESCRIPTION", "AI 辅助精选的高质量技术文章"

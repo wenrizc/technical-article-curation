@@ -1,4 +1,6 @@
+import sys
 from concurrent.futures import Future
+from types import SimpleNamespace
 
 import pytest
 
@@ -10,6 +12,54 @@ from tac.settings import Settings
 def test_fetch_url_fails_when_crawler4ai_disabled():
     with pytest.raises(FetchError, match="disabled"):
         fetch_url("https://example.com/article", crawler4ai_enabled=False)
+
+
+def test_fetch_url_falls_back_to_http_strategy_when_browser_missing(monkeypatch):
+    class FakeCrawler:
+        def __init__(self, crawler_strategy=None):
+            self.crawler_strategy = crawler_strategy
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def arun(self, url):
+            if self.crawler_strategy is None:
+                raise RuntimeError(
+                    "BrowserType.launch: Executable doesn't exist. "
+                    "Please run the following command to download new browsers: playwright install"
+                )
+            return SimpleNamespace(
+                markdown="# Article\n\nBody",
+                status_code=200,
+                url=url,
+            )
+
+    class FakeHTTPCrawlerConfig:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    class FakeAsyncHTTPCrawlerStrategy:
+        def __init__(self, config):
+            self.config = config
+
+    monkeypatch.setitem(sys.modules, "crawl4ai", SimpleNamespace(AsyncWebCrawler=FakeCrawler))
+    monkeypatch.setitem(
+        sys.modules,
+        "crawl4ai.async_crawler_strategy",
+        SimpleNamespace(
+            AsyncHTTPCrawlerStrategy=FakeAsyncHTTPCrawlerStrategy,
+            HTTPCrawlerConfig=FakeHTTPCrawlerConfig,
+        ),
+    )
+
+    result = fetch_url("https://example.com/article", crawler4ai_enabled=True)
+
+    assert result.markdown == "# Article\n\nBody"
+    assert result.metadata["crawler"] == "crawler4ai-http"
+    assert "fallback_reason" in result.metadata
 
 
 def test_fetch_pending_records_crawler4ai_failure(tmp_path, monkeypatch):

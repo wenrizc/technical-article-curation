@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from urllib.parse import urlencode, urljoin, urlsplit
+from urllib.parse import urlencode, urljoin, urlsplit, urlunsplit
 from xml.etree import ElementTree
 
 import feedparser
@@ -110,7 +110,7 @@ def _parse_feed_body(source: SourceConfig, content: bytes) -> list[tuple[str, st
         return _parse_listing_body(feed, content)
     if feed.type == "sitemap":
         return _sitemap_url_entries(content)
-    parsed = feedparser.parse(content)
+    parsed = feedparser.parse(_strip_invalid_xml_control_chars(content))
     if getattr(parsed, "bozo", False):
         bozo_exception = getattr(parsed, "bozo_exception", None)
         raise ValueError(f"feed parse failed: {bozo_exception}")
@@ -119,8 +119,40 @@ def _parse_feed_body(source: SourceConfig, content: bytes) -> list[tuple[str, st
         url = getattr(entry, "link", None)
         title = getattr(entry, "title", None) or url
         if url:
-            entries.append((title, url))
+            entries.append((title, _normalize_feed_entry_url(source, url)))
     return entries
+
+
+def _strip_invalid_xml_control_chars(content: bytes) -> bytes:
+    """移除 RSS/Atom 中会导致 XML 解析失败的 ASCII 控制字符。"""
+    invalid = bytes(code for code in range(32) if code not in {9, 10, 13})
+    return content.translate(None, invalid)
+
+
+def _normalize_feed_entry_url(source: SourceConfig, url: str) -> str:
+    """把 feed 条目链接归一为可抓取的绝对 URL。"""
+    cleaned = url.strip()
+    feed = source.feed
+    base = source.site_url or (feed.url if feed and feed.url else None)
+    if not base:
+        return cleaned
+
+    parsed = urlsplit(cleaned)
+    base_parsed = urlsplit(base)
+    if parsed.scheme in {"http", "https"}:
+        if parsed.hostname in {"localhost", "127.0.0.1", "0.0.0.0"} and base_parsed.netloc:
+            # 一些静态站点 feed 会错误带出本地开发地址,实际文章路径仍可按站点域名解析。
+            return urlunsplit(
+                (
+                    base_parsed.scheme or "https",
+                    base_parsed.netloc,
+                    parsed.path,
+                    parsed.query,
+                    parsed.fragment,
+                )
+            )
+        return cleaned
+    return urljoin(base, cleaned)
 
 
 def _parse_sitemap_body(content: bytes) -> tuple[str, list[str]]:

@@ -2,9 +2,9 @@ services:
   tac:
     image: ghcr.io/astral-sh/uv:python3.11-bookworm
     working_dir: /app
-    command: uv run uvicorn tac.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uv run uvicorn tac.main:app --host 0.0.0.0 --port ${TAC_PORT:-1104} --reload
     ports:
-      - "8000:8000"
+      - "${TAC_PORT:-1104}:${TAC_PORT:-1104}"
     environment:
       TAC_RSSHUB_ENABLED: "true"
       TAC_RSSHUB_INSTANCE: "http://rsshub:1200"
@@ -20,3 +20,4 @@ services:
       - "1200:1200"
     environment:
       CACHE_TYPE: memory
+      ZHIHU_COOKIES: "${ZHIHU_COOKIES:-}"

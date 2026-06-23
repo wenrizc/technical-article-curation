@@ -10,13 +10,13 @@
 
 ```powershell
 uv sync --extra test
-uv run uvicorn tac.main:app --host 127.0.0.1 --port 8000 --reload
+uv run uvicorn tac.main:app --host 127.0.0.1 --port 1104 --reload
 uv run ruff check .
 uv run ruff format .
 uv run pytest
 ```
 
-`uv sync --extra test` 用于安装运行、测试和开发检查依赖。`uv run uvicorn tac.main:app --host 127.0.0.1 --port 8000 --reload` 启动本地 FastAPI 服务，应用默认在启动时执行 SQLite 迁移，流水线阶段通过管理页或 `/api/admin/jobs/*` 后台任务触发。`uv run ruff check .` 运行静态检查，`uv run ruff format .` 统一格式化代码。`uv run pytest` 运行全部离线测试。
+`uv sync --extra test` 用于安装运行、测试和开发检查依赖。`uv run uvicorn tac.main:app --host 127.0.0.1 --port 1104 --reload` 启动本地 FastAPI 服务，应用默认在启动时执行 SQLite 迁移，流水线阶段通过管理页或 `/api/admin/jobs/*` 后台任务触发。`uv run ruff check .` 运行静态检查，`uv run ruff format .` 统一格式化代码。`uv run pytest` 运行全部离线测试。
 
 ## 编码风格与命名约定
 

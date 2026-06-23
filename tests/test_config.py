@@ -101,7 +101,7 @@ def test_admin_runtime_settings_defaults(monkeypatch):
     assert settings.rsshub_startup_check is False
     assert settings.rsshub_strict_startup is False
     assert settings.rsshub_timeout_seconds == 30
-    assert settings.public_base_url == "http://127.0.0.1:8000"
+    assert settings.public_base_url == "http://127.0.0.1:1104"
     assert settings.public_feed_title == "技术文章精选"
     assert settings.public_feed_description == "AI 辅助精选的高质量技术文章"
     assert settings.public_feed_language == "zh-CN"

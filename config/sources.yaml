@@ -134,4 +134,1016 @@ sources:
       type: "direct"
       url: "https://www.ruanyifeng.com/blog/atom.xml"
 
+  - name: "OpenAI News"
+    site_url: "https://openai.com/news/"
+    enabled: true
+    display: "featured"
+    tags: ["AI", "Research", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://openai.com/news/rss.xml"
+
+  - name: "Anthropic Engineering"
+    site_url: "https://www.anthropic.com/engineering"
+    enabled: true
+    display: "featured"
+    tags: ["AI", "Engineering", "Agents"]
+    feed:
+      type: "listing"
+      url: "https://www.anthropic.com/engineering"
+      link_selector: 'a[href^="/engineering/"]'
+      base_url: "https://www.anthropic.com"
+
+  - name: "Anthropic News"
+    site_url: "https://www.anthropic.com/news"
+    enabled: true
+    display: "default"
+    tags: ["AI", "Research", "Product"]
+    feed:
+      type: "listing"
+      url: "https://www.anthropic.com/news"
+      link_selector: 'a[href^="/news/"]'
+      base_url: "https://www.anthropic.com"
+
+  - name: "Claude Code Releases"
+    site_url: "https://github.com/anthropics/claude-code/releases"
+    enabled: true
+    display: "featured"
+    tags: ["AI", "Developer Tools", "Agents"]
+    feed:
+      type: "direct"
+      url: "https://github.com/anthropics/claude-code/releases.atom"
+
+  - name: "Amazon Science"
+    site_url: "https://www.amazon.science/"
+    enabled: true
+    display: "default"
+    tags: ["AI", "Research", "Amazon"]
+    feed:
+      type: "direct"
+      url: "https://www.amazon.science/index.rss"
+
+  - name: "AWS News Blog"
+    site_url: "https://aws.amazon.com/blogs/aws/"
+    enabled: true
+    display: "featured"
+    tags: ["Cloud", "AWS", "Infrastructure"]
+    feed:
+      type: "direct"
+      url: "https://aws.amazon.com/blogs/aws/feed/"
+
+  - name: "AWS Architecture Blog"
+    site_url: "https://aws.amazon.com/blogs/architecture/"
+    enabled: true
+    display: "featured"
+    tags: ["Architecture", "AWS", "Cloud"]
+    feed:
+      type: "direct"
+      url: "https://aws.amazon.com/blogs/architecture/feed/"
+
+  - name: "AWS Machine Learning Blog"
+    site_url: "https://aws.amazon.com/blogs/machine-learning/"
+    enabled: true
+    display: "default"
+    tags: ["AI", "AWS", "Machine Learning"]
+    feed:
+      type: "direct"
+      url: "https://aws.amazon.com/blogs/machine-learning/feed/"
+
+  - name: "Microsoft Developer Blogs"
+    site_url: "https://devblogs.microsoft.com/"
+    enabled: true
+    display: "featured"
+    tags: ["Developer Tools", "Microsoft", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://devblogs.microsoft.com/feed"
+
+  - name: "Microsoft Research Blog"
+    site_url: "https://www.microsoft.com/en-us/research/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Research", "Microsoft", "AI"]
+    feed:
+      type: "direct"
+      url: "https://www.microsoft.com/en-us/research/feed/"
+
+  - name: "Azure Blog"
+    site_url: "https://azure.microsoft.com/en-us/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Cloud", "Azure", "Microsoft"]
+    feed:
+      type: "direct"
+      url: "https://azure.microsoft.com/en-us/blog/feed/"
+
+  - name: "NVIDIA Technical Blog"
+    site_url: "https://developer.nvidia.com/blog/"
+    enabled: true
+    display: "featured"
+    tags: ["AI", "GPU", "Systems"]
+    feed:
+      type: "direct"
+      url: "https://developer.nvidia.com/blog/feed/"
+
+  - name: "Apple Developer News"
+    site_url: "https://developer.apple.com/news/"
+    enabled: true
+    display: "default"
+    tags: ["Apple", "Developer Tools", "Platform"]
+    feed:
+      type: "direct"
+      url: "https://developer.apple.com/news/rss/news.rss"
+
+  - name: "Netflix TechBlog"
+    site_url: "https://netflixtechblog.com/"
+    enabled: true
+    display: "featured"
+    tags: ["Streaming", "Architecture", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://netflixtechblog.com/feed"
+
+  - name: "Stripe Engineering"
+    site_url: "https://stripe.com/blog/engineering"
+    enabled: true
+    display: "featured"
+    tags: ["Payments", "Engineering", "Infrastructure"]
+    feed:
+      type: "direct"
+      url: "https://stripe.com/blog/feed.rss"
+
+  - name: "Lyft Engineering"
+    site_url: "https://eng.lyft.com/"
+    enabled: true
+    display: "default"
+    tags: ["Engineering", "Infrastructure", "Data"]
+    feed:
+      type: "direct"
+      url: "https://eng.lyft.com/feed"
+
+  - name: "Spotify Engineering"
+    site_url: "https://engineering.atspotify.com/"
+    enabled: true
+    display: "default"
+    tags: ["Engineering", "Data", "Developer Tools"]
+    feed:
+      type: "direct"
+      url: "https://engineering.atspotify.com/feed"
+
+  - name: "Canva Engineering"
+    site_url: "https://www.canva.dev/blog/engineering/"
+    enabled: true
+    display: "default"
+    tags: ["Engineering", "Frontend", "Design Tools"]
+    feed:
+      type: "direct"
+      url: "https://www.canva.dev/blog/engineering/feed.xml"
+
+  - name: "Grab Tech"
+    site_url: "https://engineering.grab.com/"
+    enabled: true
+    display: "default"
+    tags: ["Engineering", "Data", "Asia"]
+    feed:
+      type: "direct"
+      url: "https://engineering.grab.com/feed.xml"
+
+  - name: "Yelp Engineering"
+    site_url: "https://engineeringblog.yelp.com/"
+    enabled: true
+    display: "default"
+    tags: ["Engineering", "Search", "Data"]
+    feed:
+      type: "direct"
+      url: "https://engineeringblog.yelp.com/feed.xml"
+
+  - name: "Instacart Tech Blog"
+    site_url: "https://tech.instacart.com/"
+    enabled: true
+    display: "default"
+    tags: ["Engineering", "Logistics", "Data"]
+    feed:
+      type: "direct"
+      url: "https://tech.instacart.com/feed"
+
+  - name: "Salesforce Engineering"
+    site_url: "https://engineering.salesforce.com/"
+    enabled: true
+    display: "default"
+    tags: ["Engineering", "Cloud", "Data"]
+    feed:
+      type: "direct"
+      url: "https://engineering.salesforce.com/feed/"
+
+  - name: "Heroku Blog"
+    site_url: "https://blog.heroku.com/"
+    enabled: true
+    display: "default"
+    tags: ["Cloud", "Platform", "Developer Tools"]
+    feed:
+      type: "direct"
+      url: "https://www.heroku.com/blog/feed/"
+
+  - name: "Square Developer Blog"
+    site_url: "https://developer.squareup.com/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Payments", "Developer Tools", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://developer.squareup.com/blog/rss.xml"
+
+  - name: "Datadog Blog"
+    site_url: "https://www.datadoghq.com/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Observability", "Infrastructure", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://www.datadoghq.com/blog/index.xml"
+
+  - name: "HashiCorp Blog"
+    site_url: "https://www.hashicorp.com/blog"
+    enabled: true
+    display: "default"
+    tags: ["Infrastructure", "Cloud", "DevOps"]
+    feed:
+      type: "direct"
+      url: "https://www.hashicorp.com/blog/feed.xml"
+
+  - name: "PlanetScale Blog"
+    site_url: "https://planetscale.com/blog"
+    enabled: true
+    display: "default"
+    tags: ["Database", "MySQL", "Infrastructure"]
+    feed:
+      type: "direct"
+      url: "https://planetscale.com/blog/feed.atom"
+
+  - name: "Fly.io Blog"
+    site_url: "https://fly.io/blog/"
+    enabled: true
+    display: "featured"
+    tags: ["Cloud", "Infrastructure", "Platform"]
+    feed:
+      type: "direct"
+      url: "https://fly.io/blog/feed.xml"
+
+  - name: "Tailscale Blog"
+    site_url: "https://tailscale.com/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Networking", "Security", "Infrastructure"]
+    feed:
+      type: "direct"
+      url: "https://tailscale.com/blog/index.xml"
+
+  - name: "Grafana Blog"
+    site_url: "https://grafana.com/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Observability", "Infrastructure", "Open Source"]
+    feed:
+      type: "direct"
+      url: "https://grafana.com/blog/index.xml"
+
+  - name: "Elastic Blog"
+    site_url: "https://www.elastic.co/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Search", "Observability", "Security"]
+    feed:
+      type: "direct"
+      url: "https://www.elastic.co/blog/feed"
+
+  - name: "Red Hat Developer Blog"
+    site_url: "https://developers.redhat.com/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Linux", "Cloud Native", "Open Source"]
+    feed:
+      type: "direct"
+      url: "https://developers.redhat.com/blog/feed"
+
+  - name: "Supabase Blog"
+    site_url: "https://supabase.com/blog"
+    enabled: true
+    display: "default"
+    tags: ["Database", "Developer Tools", "Platform"]
+    feed:
+      type: "direct"
+      url: "https://supabase.com/rss.xml"
+
+  - name: "Sentry Blog"
+    site_url: "https://blog.sentry.io/"
+    enabled: true
+    display: "default"
+    tags: ["Observability", "Developer Tools", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://blog.sentry.io/feed.xml"
+
+  - name: "Confluent Blog"
+    site_url: "https://www.confluent.io/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Streaming", "Data", "Infrastructure"]
+    feed:
+      type: "direct"
+      url: "https://www.confluent.io/rss.xml"
+
+  - name: "Docker Blog"
+    site_url: "https://www.docker.com/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Containers", "DevOps", "Developer Tools"]
+    feed:
+      type: "direct"
+      url: "https://www.docker.com/feed/"
+
+  - name: "DigitalOcean Blog"
+    site_url: "https://www.digitalocean.com/blog"
+    enabled: true
+    display: "default"
+    tags: ["Cloud", "Developer Tools", "Infrastructure"]
+    feed:
+      type: "direct"
+      url: "https://www.digitalocean.com/rss/blog.atom"
+
+  - name: "Neon Blog"
+    site_url: "https://neon.com/blog"
+    enabled: true
+    display: "default"
+    tags: ["Database", "PostgreSQL", "Infrastructure"]
+    feed:
+      type: "direct"
+      url: "https://neon.com/blog/rss.xml"
+
+  - name: "Prisma Blog"
+    site_url: "https://www.prisma.io/blog"
+    enabled: true
+    display: "default"
+    tags: ["Database", "Developer Tools", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://www.prisma.io/blog/rss.xml"
+
+  - name: "Pulumi Blog"
+    site_url: "https://www.pulumi.com/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Infrastructure", "DevOps", "Cloud"]
+    feed:
+      type: "direct"
+      url: "https://www.pulumi.com/blog/rss.xml"
+
+  - name: "Sourcegraph Blog"
+    site_url: "https://sourcegraph.com/blog"
+    enabled: true
+    display: "default"
+    tags: ["Developer Tools", "Code Search", "AI"]
+    feed:
+      type: "direct"
+      url: "https://sourcegraph.com/blog/feed.rss"
+
+  - name: "Dagster Blog"
+    site_url: "https://dagster.io/blog"
+    enabled: true
+    display: "default"
+    tags: ["Data", "Infrastructure", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://dagster.io/blog/rss.xml"
+
+  - name: "dbt Labs Blog"
+    site_url: "https://www.getdbt.com/blog"
+    enabled: true
+    display: "default"
+    tags: ["Data", "Analytics", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://www.getdbt.com/blog/feed.xml"
+
+  - name: "Akamai Blog"
+    site_url: "https://www.akamai.com/blog"
+    enabled: true
+    display: "default"
+    tags: ["CDN", "Security", "Infrastructure"]
+    feed:
+      type: "direct"
+      url: "https://www.akamai.com/blog/rss.xml"
+
+  - name: "GitHub Changelog"
+    site_url: "https://github.blog/changelog/"
+    enabled: true
+    display: "default"
+    tags: ["Developer Tools", "GitHub", "Product"]
+    feed:
+      type: "direct"
+      url: "https://github.blog/changelog/feed/"
+
+  - name: "GitHub Security Lab"
+    site_url: "https://github.blog/security/"
+    enabled: true
+    display: "default"
+    tags: ["Security", "Developer Tools", "GitHub"]
+    feed:
+      type: "direct"
+      url: "https://github.blog/security/feed/"
+
+  - name: "Auth0 Blog"
+    site_url: "https://auth0.com/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Security", "Identity", "Developer Tools"]
+    feed:
+      type: "direct"
+      url: "https://auth0.com/blog/rss.xml"
+
+  - name: "Trail of Bits Blog"
+    site_url: "https://blog.trailofbits.com/"
+    enabled: true
+    display: "default"
+    tags: ["Security", "Research", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://blog.trailofbits.com/index.xml"
+
+  - name: "Cloudflare Radar Blog"
+    site_url: "https://blog.cloudflare.com/tag/radar/"
+    enabled: true
+    display: "default"
+    tags: ["Internet", "Security", "Data"]
+    feed:
+      type: "direct"
+      url: "https://blog.cloudflare.com/tag/radar/rss/"
+
+  - name: "MDN Blog"
+    site_url: "https://developer.mozilla.org/en-US/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Web", "Developer Tools", "Mozilla"]
+    feed:
+      type: "direct"
+      url: "https://developer.mozilla.org/en-US/blog/rss.xml"
+
+  - name: "Mozilla Hacks"
+    site_url: "https://hacks.mozilla.org/"
+    enabled: true
+    display: "default"
+    tags: ["Web", "Browser", "Developer Tools"]
+    feed:
+      type: "direct"
+      url: "https://hacks.mozilla.org/feed/"
+
+  - name: "WebKit Blog"
+    site_url: "https://webkit.org/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Web", "Browser", "Performance"]
+    feed:
+      type: "direct"
+      url: "https://webkit.org/feed/"
+
+  - name: "V8 Blog"
+    site_url: "https://v8.dev/blog"
+    enabled: true
+    display: "default"
+    tags: ["JavaScript", "Performance", "Runtime"]
+    feed:
+      type: "direct"
+      url: "https://v8.dev/blog.atom"
+
+  - name: "Rust Blog"
+    site_url: "https://blog.rust-lang.org/"
+    enabled: true
+    display: "default"
+    tags: ["Rust", "Programming Language", "Open Source"]
+    feed:
+      type: "direct"
+      url: "https://blog.rust-lang.org/feed.xml"
+
+  - name: "Go Blog"
+    site_url: "https://go.dev/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Go", "Programming Language", "Open Source"]
+    feed:
+      type: "direct"
+      url: "https://go.dev/blog/feed.atom"
+
+  - name: "Python Insider"
+    site_url: "https://blog.python.org/"
+    enabled: true
+    display: "default"
+    tags: ["Python", "Programming Language", "Open Source"]
+    feed:
+      type: "direct"
+      url: "https://blog.python.org/feeds/posts/default?alt=rss"
+
+  - name: "Node.js Blog"
+    site_url: "https://nodejs.org/en/blog"
+    enabled: true
+    display: "default"
+    tags: ["JavaScript", "Runtime", "Open Source"]
+    feed:
+      type: "direct"
+      url: "https://nodejs.org/en/feed/blog.xml"
+
+  - name: "Simon Willison"
+    site_url: "https://simonwillison.net/"
+    enabled: true
+    display: "featured"
+    tags: ["AI", "Web", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://simonwillison.net/atom/everything/"
+
+  - name: "Dan Luu"
+    site_url: "https://danluu.com/"
+    enabled: true
+    display: "featured"
+    tags: ["Systems", "Performance", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://danluu.com/atom.xml"
+
+  - name: "Hillel Wayne"
+    site_url: "https://www.hillelwayne.com/"
+    enabled: true
+    display: "default"
+    tags: ["Formal Methods", "Software Design", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://www.hillelwayne.com/post/index.xml"
+
+  - name: "Coding Horror"
+    site_url: "https://blog.codinghorror.com/"
+    enabled: true
+    display: "default"
+    tags: ["Software Engineering", "Human Factors", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://blog.codinghorror.com/rss/"
+
+  - name: "Joel on Software"
+    site_url: "https://www.joelonsoftware.com/"
+    enabled: true
+    display: "default"
+    tags: ["Software Engineering", "Management", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://www.joelonsoftware.com/feed/"
+
+  - name: "Aphyr"
+    site_url: "https://aphyr.com/"
+    enabled: true
+    display: "featured"
+    tags: ["Distributed Systems", "Testing", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://aphyr.com/posts.atom"
+
+  - name: "Brave New Geek"
+    site_url: "https://bravenewgeek.com/"
+    enabled: true
+    display: "default"
+    tags: ["Distributed Systems", "Messaging", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://bravenewgeek.com/feed/"
+
+  - name: "Marc Brooker"
+    site_url: "https://brooker.co.za/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Distributed Systems", "AWS", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://brooker.co.za/blog/rss.xml"
+
+  - name: "Eli Bendersky"
+    site_url: "https://eli.thegreenplace.net/"
+    enabled: true
+    display: "default"
+    tags: ["Programming Language", "Systems", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://eli.thegreenplace.net/feeds/all.atom.xml"
+
+  - name: "Null Program"
+    site_url: "https://nullprogram.com/"
+    enabled: true
+    display: "default"
+    tags: ["C", "Systems", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://nullprogram.com/feed/"
+
+  - name: "John D. Cook"
+    site_url: "https://www.johndcook.com/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Math", "Programming", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://www.johndcook.com/blog/feed/"
+
+  - name: "Jay Alammar"
+    site_url: "https://jalammar.github.io/"
+    enabled: true
+    display: "featured"
+    tags: ["AI", "Machine Learning", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://jalammar.github.io/feed.xml"
+
+  - name: "Lilian Weng"
+    site_url: "https://lilianweng.github.io/"
+    enabled: true
+    display: "featured"
+    tags: ["AI", "Machine Learning", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://lilianweng.github.io/lil-log/feed.xml"
+
+  - name: "Chip Huyen"
+    site_url: "https://huyenchip.com/"
+    enabled: true
+    display: "featured"
+    tags: ["AI", "Machine Learning", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://huyenchip.com/feed.xml"
+
+  - name: "Eugene Yan"
+    site_url: "https://eugeneyan.com/"
+    enabled: true
+    display: "featured"
+    tags: ["AI", "Machine Learning", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://eugeneyan.com/rss/"
+
+  - name: "Sebastian Raschka"
+    site_url: "https://sebastianraschka.com/"
+    enabled: true
+    display: "default"
+    tags: ["AI", "Machine Learning", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://sebastianraschka.com/rss_feed.xml"
+
+  - name: "Jeremy Kun"
+    site_url: "https://www.jeremykun.com/"
+    enabled: true
+    display: "default"
+    tags: ["Algorithms", "Math", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://www.jeremykun.com/index.xml"
+
+  - name: "Red Blob Games"
+    site_url: "https://www.redblobgames.com/"
+    enabled: true
+    display: "default"
+    tags: ["Algorithms", "Visualization", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://www.redblobgames.com/blog/posts.xml"
+
+  - name: "Daniel Lemire"
+    site_url: "https://lemire.me/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Performance", "C++", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://lemire.me/blog/feed/"
+
+  - name: "MaskRay"
+    site_url: "https://maskray.me/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Compiler", "Systems", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://maskray.me/blog/atom.xml"
+
+  - name: "Josh W Comeau"
+    site_url: "https://www.joshwcomeau.com/"
+    enabled: true
+    display: "default"
+    tags: ["Frontend", "Web", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://www.joshwcomeau.com/rss.xml"
+
+  - name: "Jake Archibald"
+    site_url: "https://jakearchibald.com/"
+    enabled: true
+    display: "default"
+    tags: ["Frontend", "Web", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://jakearchibald.com/posts.rss"
+
+  - name: "ACM Queue Articles"
+    site_url: "https://queue.acm.org/"
+    enabled: true
+    display: "featured"
+    tags: ["Systems", "Architecture", "Research"]
+    feed:
+      type: "direct"
+      url: "https://queue.acm.org/rss/feeds/articles.xml"
+
+  - name: "LoRexxar Blog"
+    site_url: "https://lorexxar.cn/"
+    enabled: true
+    display: "default"
+    tags: ["Security", "Personal Blog", "China"]
+    feed:
+      type: "direct"
+      url: "https://lorexxar.cn/atom.xml"
+
+  - name: "CoolShell"
+    site_url: "https://coolshell.cn/"
+    enabled: true
+    display: "featured"
+    tags: ["Software Engineering", "Architecture", "China"]
+    feed:
+      type: "direct"
+      url: "https://coolshell.cn/feed"
+
+  - name: "Chawye Hsu"
+    site_url: "https://chawyehsu.com/"
+    enabled: true
+    display: "default"
+    tags: ["Developer Tools", "Personal Blog", "China"]
+    feed:
+      type: "direct"
+      url: "https://chawyehsu.com/feed/atom.xml"
+
+  - name: "Jimmy Song"
+    site_url: "https://jimmysong.io"
+    enabled: true
+    display: "default"
+    tags: ["Cloud Native", "Kubernetes", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://jimmysong.io/index.xml"
+
+  - name: "Bram.us"
+    site_url: "https://www.bram.us"
+    enabled: true
+    display: "default"
+    tags: ["Frontend", "Web", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://www.bram.us/feed/"
+
+  - name: "Thomas Schatzl"
+    site_url: "https://tschatzl.github.io/"
+    enabled: true
+    display: "default"
+    tags: ["Java", "Performance", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://tschatzl.github.io/feed.xml"
+
+  - name: "Wener Live & Life"
+    site_url: "https://wener.me/"
+    enabled: true
+    display: "default"
+    tags: ["Backend", "Infrastructure", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://wener.me/story/rss.xml"
+
+  - name: "Afoo"
+    site_url: "https://afoo.me/"
+    enabled: true
+    display: "default"
+    tags: ["Architecture", "Software Design", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://afoo.me/feeds.xml"
+
+  - name: "Skywind Inside"
+    site_url: "https://www.skywind.me/blog/"
+    enabled: true
+    display: "featured"
+    tags: ["Programming", "Systems", "China"]
+    feed:
+      type: "direct"
+      url: "http://www.skywind.me/blog/feed"
+
+  - name: "Wang Yi AI"
+    site_url: "https://wangyi.ai/"
+    enabled: true
+    display: "default"
+    tags: ["AI", "Personal Blog", "China"]
+    feed:
+      type: "direct"
+      url: "https://wangyi.ai/atom.xml"
+
+  - name: "Innei"
+    site_url: "https://innei.in"
+    enabled: true
+    display: "default"
+    tags: ["Frontend", "Personal Blog", "China"]
+    feed:
+      type: "direct"
+      url: "https://innei.in/feed"
+
+  - name: "Baiyun Blog"
+    site_url: "https://baiyun.me/"
+    enabled: true
+    display: "default"
+    tags: ["Backend", "Linux", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://baiyun.me/feed"
+
+  - name: "Crunchy Data Blog"
+    site_url: "https://www.crunchydata.com/blog"
+    enabled: true
+    display: "featured"
+    tags: ["Database", "PostgreSQL", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://www.crunchydata.com/blog/rss.xml"
+
+  - name: "ClickHouse Blog"
+    site_url: "https://clickhouse.com/blog"
+    enabled: true
+    display: "featured"
+    tags: ["Database", "Analytics", "Engineering"]
+    feed:
+      type: "direct"
+      url: "https://clickhouse.com/rss.xml"
+
+  - name: "LWN.net"
+    site_url: "https://lwn.net/"
+    enabled: true
+    display: "featured"
+    tags: ["Linux", "Security", "Systems"]
+    feed:
+      type: "direct"
+      url: "https://lwn.net/headlines/rss"
+
+  - name: "Memcached Blog"
+    site_url: "https://memcached.org/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Caching", "Systems", "Infrastructure"]
+    feed:
+      type: "direct"
+      url: "https://memcached.org/blog/index.xml"
+
+  - name: "Racket Blog"
+    site_url: "https://blog.racket-lang.org/"
+    enabled: true
+    display: "default"
+    tags: ["Programming Language", "Lisp", "Open Source"]
+    feed:
+      type: "direct"
+      url: "https://blog.racket-lang.org/feeds/all.atom.xml"
+
+  - name: "Mitchell Hashimoto"
+    site_url: "https://mitchellh.com/"
+    enabled: true
+    display: "featured"
+    tags: ["Infrastructure", "Programming", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://mitchellh.com/feed.xml"
+
+  - name: "Fzakaria Blog"
+    site_url: "https://fzakaria.com/"
+    enabled: true
+    display: "default"
+    tags: ["Nix", "Linux", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://fzakaria.com/feed.xml"
+
+  - name: "Alex Chan"
+    site_url: "https://alexwlchan.net/"
+    enabled: true
+    display: "default"
+    tags: ["Programming", "Web", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://alexwlchan.net/atom.xml"
+
+  - name: "Andy Atkinson"
+    site_url: "https://andyatkinson.com/"
+    enabled: true
+    display: "default"
+    tags: ["Database", "PostgreSQL", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://andyatkinson.com/feed.xml"
+
+  - name: "Adrien Grand"
+    site_url: "https://jpountz.github.io/"
+    enabled: true
+    display: "default"
+    tags: ["Search", "Performance", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://jpountz.github.io/feed.xml"
+
+  - name: "Anders Murphy"
+    site_url: "https://andersmurphy.com/"
+    enabled: true
+    display: "default"
+    tags: ["Database", "SQLite", "Personal Blog"]
+    feed:
+      type: "direct"
+      url: "https://andersmurphy.com/feed.xml"
+
+  - name: "RIPE Labs"
+    site_url: "https://labs.ripe.net/"
+    enabled: true
+    display: "default"
+    tags: ["Networking", "Security", "Research"]
+    feed:
+      type: "direct"
+      url: "https://labs.ripe.net/feed.xml"
+
+  - name: "Daniel Stenberg"
+    site_url: "https://daniel.haxx.se/blog/"
+    enabled: true
+    display: "featured"
+    tags: ["Networking", "Security", "Open Source"]
+    feed:
+      type: "direct"
+      url: "https://daniel.haxx.se/blog/feed/"
+
+  - name: "Random Oracle"
+    site_url: "https://blog.randomoracle.io/"
+    enabled: true
+    display: "default"
+    tags: ["Security", "Personal Blog", "Research"]
+    feed:
+      type: "direct"
+      url: "https://blog.randomoracle.io/feed/"
+
+  - name: "Argus Systems Blog"
+    site_url: "https://blog.argus-systems.ai/"
+    enabled: true
+    display: "default"
+    tags: ["Security", "AI", "Research"]
+    feed:
+      type: "direct"
+      url: "https://blog.argus-systems.ai/feeds/all.atom.xml"
+
+  - name: "NixOS Blog"
+    site_url: "https://nixos.org/blog/"
+    enabled: true
+    display: "default"
+    tags: ["Nix", "Linux", "Open Source"]
+    feed:
+      type: "direct"
+      url: "https://nixos.org/blog/announcements-rss.xml"
+
+  - name: "TypeScript Blog"
+    site_url: "https://devblogs.microsoft.com/typescript/"
+    enabled: true
+    display: "featured"
+    tags: ["TypeScript", "Developer Tools", "Microsoft"]
+    feed:
+      type: "direct"
+      url: "https://devblogs.microsoft.com/typescript/feed/"
+
+  - name: "Spring Blog"
+    site_url: "https://spring.io/blog"
+    enabled: true
+    display: "default"
+    tags: ["Java", "Backend", "Open Source"]
+    feed:
+      type: "direct"
+      url: "https://spring.io/blog.atom"
+
+  - name: "Google Blog"
+    site_url: "https://blog.google/"
+    enabled: true
+    display: "default"
+    tags: ["Google", "AI", "Platform"]
+    feed:
+      type: "direct"
+      url: "https://blog.google/rss/"
+
+  - name: "Google DeepMind Blog"
+    site_url: "https://deepmind.google/blog/"
+    enabled: true
+    display: "featured"
+    tags: ["AI", "Research", "Google"]
+    feed:
+      type: "direct"
+      url: "https://deepmind.google/blog/rss.xml"
+
 manual_urls: []
