@@ -314,6 +314,60 @@ sources:
     ]
 
 
+def test_discover_sitemapindex_expands_nested_sitemaps(tmp_path, monkeypatch):
+    settings = _settings(
+        tmp_path,
+        """
+sources:
+  - name: fowler
+    feed:
+      type: sitemap
+      url: https://martinfowler.com/sitemap.xml
+""",
+    )
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    sitemap_index = b"""<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap><loc>https://martinfowler.com/sitemap-posts.xml</loc></sitemap>
+  <sitemap><loc>https://martinfowler.com/sitemap-pages.xml</loc></sitemap>
+</sitemapindex>
+"""
+    posts = b"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://martinfowler.com/articles/refactoring.html</loc></url>
+</urlset>
+"""
+    pages = b"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://martinfowler.com/articles/microservices.html</loc></url>
+</urlset>
+"""
+    session = FakeSession(
+        [
+            FakeResponse(content=sitemap_index),
+            FakeResponse(content=posts),
+            FakeResponse(content=pages),
+        ]
+    )
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
+
+    result = discover_candidates(settings, conn)
+    rows = conn.execute(
+        "SELECT url FROM articles WHERE source_name = 'fowler' ORDER BY url"
+    ).fetchall()
+
+    assert result["inserted"] == 2
+    assert [row["url"] for row in rows] == [
+        "https://martinfowler.com/articles/microservices.html",
+        "https://martinfowler.com/articles/refactoring.html",
+    ]
+    assert session.calls[1]["url"] == "https://martinfowler.com/sitemap-posts.xml"
+    assert session.calls[2]["url"] == "https://martinfowler.com/sitemap-pages.xml"
+
+
 def test_discover_sitemap_uses_conditional_headers(tmp_path, monkeypatch):
     settings = _settings(
         tmp_path,

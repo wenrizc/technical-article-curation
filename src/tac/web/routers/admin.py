@@ -15,6 +15,7 @@ from tac.application.use_cases.discover_articles import (
     _parse_feed_body,
     build_rsshub_feed_url,
     build_session,
+    expand_sitemap_entries,
 )
 from tac.application.use_cases.manage_sources import (
     SourceConflict,
@@ -249,20 +250,27 @@ def preview_rsshub(payload: RssHubPreviewRequest, request: Request) -> dict[str,
 
 
 @router.post("/sources/preview-sitemap")
-def preview_sitemap(payload: SitemapPreviewRequest) -> dict[str, object]:
+def preview_sitemap(payload: SitemapPreviewRequest, request: Request) -> dict[str, object]:
+    settings = settings_from_request(request)
     try:
         feed = FeedConfig(type="sitemap", url=payload.url)
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     try:
-        response = build_session().get(
+        session = build_session()
+        response = session.get(
             feed.url or "",
             headers={},
             timeout=(10, 30),
             allow_redirects=True,
         )
         response.raise_for_status()
-        parsed_entries = _parse_feed_body(SourceConfig(name="preview", feed=feed), response.content)
+        parsed_entries = expand_sitemap_entries(
+            session,
+            settings,
+            content=response.content,
+            current_url=feed.url or "",
+        )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     max_entries = max(1, min(payload.limit, 50))

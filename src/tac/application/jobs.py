@@ -84,7 +84,7 @@ class JobManager:
         self._lock = RLock()
         self._execution_semaphore = asyncio.Semaphore(settings.job_max_concurrency)
         with closing(self._connect()) as conn:
-            db.migrate(conn)
+            db.migrate(conn, migrations_dir=settings.migrations_dir)
 
     def recover_interrupted_jobs(self) -> int:
         with closing(self._connect()) as conn:

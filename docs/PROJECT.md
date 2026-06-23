@@ -133,10 +133,12 @@ uv run uvicorn tac.main:app --host 127.0.0.1 --port 8000 --reload
 - `TAC_MODEL`：OpenAI SDK 使用的模型名。
 - `TAC_BASE_URL`：OpenAI-compatible 服务的 `base_url`。
 - `TAC_STATE_DB`：SQLite 路径，默认 `data/state.db`。
+- `TAC_MIGRATIONS_DIR`：SQLite 迁移目录，默认 `migrations`。
 - `TAC_SOURCES_PATH`：信源配置路径，默认 `config/sources.yaml`。
 - `TAC_PUBLIC_DIR`：发布目录，默认 `public`。
 - `TAC_MAX_RETRY`：最大重试次数，默认 `3`。
 - `TAC_CRAWLER4AI_ENABLED`：默认启用。生产文章抓取只使用 Crawler4AI；关闭它主要用于测试或 fixture 驱动运行。生产运行请安装 `--extra crawler`。
+  Crawler4AI 当前依赖 `lxml<6`，`--extra crawler` 建议使用 Python 3.11-3.13；Python 3.14 可运行核心服务、测试和 fixture 驱动流程。
 - `TAC_FETCH_DELAY_SECONDS`：每次文章抓取后等待的秒数，默认 `1`。
 - `TAC_EVALUATION_MAX_ATTEMPTS`：每篇文章 AI 评估最多尝试次数，默认 `3`。
 - `TAC_PROMPT_LANGUAGE`：提示词语言，当前仅支持 `zh-CN`。

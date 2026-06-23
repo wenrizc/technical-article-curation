@@ -39,7 +39,7 @@ def article_detail(
 
 @router.get("/index.json")
 def index(conn: Annotated[sqlite3.Connection, Depends(db_conn)]) -> list[dict[str, object]]:
-    return articles.list_public_articles(conn, page=1, page_size=200).items
+    return articles.list_all_public_articles(conn)
 
 
 def public_feed_response(

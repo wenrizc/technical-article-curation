@@ -22,6 +22,7 @@ class Settings:
     prompt_language: str
     prompt_path: Path
     few_shot_dir: Path
+    migrations_dir: Path = Path("migrations")
     auto_migrate: bool = True
     http_max_concurrency: int = 16
     job_max_concurrency: int = 1
@@ -97,6 +98,7 @@ def get_settings() -> Settings:
     prompt_language = _prompt_language()
     return Settings(
         state_db=_path_from_env("TAC_STATE_DB", "data/state.db"),
+        migrations_dir=_path_from_env("TAC_MIGRATIONS_DIR", "migrations"),
         sources_path=_path_from_env("TAC_SOURCES_PATH", "config/sources.yaml"),
         public_dir=_path_from_env("TAC_PUBLIC_DIR", "public"),
         max_retry=int(os.environ.get("TAC_MAX_RETRY", "3")),

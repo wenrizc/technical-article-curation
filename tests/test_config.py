@@ -7,12 +7,14 @@ def test_prompt_language_defaults_to_chinese(monkeypatch):
     monkeypatch.delenv("TAC_PROMPT_LANGUAGE", raising=False)
     monkeypatch.delenv("TAC_PROMPT_PATH", raising=False)
     monkeypatch.delenv("TAC_FEW_SHOT_DIR", raising=False)
+    monkeypatch.delenv("TAC_MIGRATIONS_DIR", raising=False)
 
     settings = get_settings()
 
     assert settings.prompt_language == "zh-CN"
     assert settings.prompt_path.as_posix() == "prompts/zh-CN/evaluate.md"
     assert settings.few_shot_dir.as_posix() == "prompts/zh-CN/few_shots"
+    assert settings.migrations_dir.as_posix() == "migrations"
 
 
 def test_prompt_language_rejects_english(monkeypatch):
@@ -32,11 +34,13 @@ def test_prompt_language_rejects_unknown_value(monkeypatch):
 def test_robustness_settings_from_env(monkeypatch):
     monkeypatch.setenv("TAC_FETCH_DELAY_SECONDS", "0.25")
     monkeypatch.setenv("TAC_EVALUATION_MAX_ATTEMPTS", "5")
+    monkeypatch.setenv("TAC_MIGRATIONS_DIR", "db/migrations")
 
     settings = get_settings()
 
     assert settings.fetch_delay_seconds == 0.25
     assert settings.evaluation_max_attempts == 5
+    assert settings.migrations_dir.as_posix() == "db/migrations"
 
 
 def test_admin_runtime_settings_defaults(monkeypatch):

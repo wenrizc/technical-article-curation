@@ -258,6 +258,64 @@ def list_public_articles(
     return Page([article_row_to_dict(row) for row in rows], int(total), page, page_size)
 
 
+def list_all_public_articles(
+    conn: sqlite3.Connection,
+    *,
+    q: str | None = None,
+) -> list[dict[str, object]]:
+    where, params = _article_filters(
+        status=ArticleStatus.accepted.value,
+        source=None,
+        q=q,
+        failed_only=False,
+    )
+    where_sql = "WHERE " + " AND ".join(where) if where else ""
+    rows = conn.execute(
+        f"""
+        SELECT
+            a.id,
+            a.slug,
+            a.title,
+            a.url,
+            a.source_name AS source,
+            a.source_publish_policy AS publish_policy,
+            a.status,
+            a.collected_at,
+            a.created_at,
+            a.updated_at,
+            (
+                SELECT e.summary FROM evaluations e
+                WHERE e.article_id = a.id
+                ORDER BY e.id DESC
+                LIMIT 1
+            ) AS summary,
+            (
+                SELECT e.tags FROM evaluations e
+                WHERE e.article_id = a.id
+                ORDER BY e.id DESC
+                LIMIT 1
+            ) AS tags,
+            (
+                SELECT e.recommendation_reason FROM evaluations e
+                WHERE e.article_id = a.id
+                ORDER BY e.id DESC
+                LIMIT 1
+            ) AS recommendation_reason,
+            (
+                SELECT e.dimensions FROM evaluations e
+                WHERE e.article_id = a.id
+                ORDER BY e.id DESC
+                LIMIT 1
+            ) AS dimensions
+        FROM articles a
+        {where_sql}
+        ORDER BY a.collected_at DESC, a.id DESC
+        """,
+        params,
+    ).fetchall()
+    return [article_row_to_dict(row) for row in rows]
+
+
 def get_article_detail(conn: sqlite3.Connection, article_id: int) -> dict[str, object] | None:
     article = conn.execute("SELECT * FROM articles WHERE id = ?", (article_id,)).fetchone()
     if not article:

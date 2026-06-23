@@ -10,6 +10,10 @@ WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost", "testclient", "testserver"}
 
 
+class RequestBodyTooLarge(RuntimeError):
+    pass
+
+
 def new_csrf_token() -> str:
     return token_urlsafe(32)
 
@@ -56,12 +60,44 @@ def csrf_allowed(request: Request) -> bool:
     return bool(expected and supplied and supplied == expected)
 
 
+def _content_length(header_value: str | None) -> int | None:
+    if header_value is None:
+        return None
+    return int(header_value)
+
+
+async def _buffer_request_body(request: Request, *, max_bytes: int) -> None:
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > max_bytes:
+            raise RequestBodyTooLarge
+        if chunk:
+            chunks.append(chunk)
+    body = b"".join(chunks)
+    sent = False
+
+    async def replay_receive():
+        nonlocal sent
+        if sent:
+            return {"type": "http.request", "body": b"", "more_body": False}
+        sent = True
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    request._body = body  # type: ignore[attr-defined]
+    request._receive = replay_receive  # type: ignore[attr-defined]
+
+
 async def guard_request(request: Request, call_next) -> Response:
     settings = request.app.state.settings
     if not is_local_request(request):
         return JSONResponse({"detail": "local access only"}, status_code=403)
-    content_length = request.headers.get("content-length")
-    if content_length and int(content_length) > settings.max_request_body_bytes:
+    try:
+        content_length = _content_length(request.headers.get("content-length"))
+    except ValueError:
+        return JSONResponse({"detail": "invalid content-length"}, status_code=400)
+    if content_length and content_length > settings.max_request_body_bytes:
         return JSONResponse({"detail": "request body too large"}, status_code=413)
     if request.method in WRITE_METHODS and (
         not same_origin_write_allowed(request) or not csrf_allowed(request)
@@ -71,4 +107,9 @@ async def guard_request(request: Request, call_next) -> Response:
     if getattr(semaphore, "_value", 0) <= 0:
         return JSONResponse({"detail": "too many concurrent requests"}, status_code=429)
     async with semaphore:
-        return await call_next(request)
+        try:
+            if request.method in WRITE_METHODS:
+                await _buffer_request_body(request, max_bytes=settings.max_request_body_bytes)
+            return await call_next(request)
+        except RequestBodyTooLarge:
+            return JSONResponse({"detail": "request body too large"}, status_code=413)

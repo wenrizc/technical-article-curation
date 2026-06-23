@@ -1,17 +1,22 @@
+import asyncio
 import re
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import feedparser
 import pytest
 from fastapi.testclient import TestClient
 from requests import RequestException
+from starlette.requests import Request
+from starlette.responses import Response
 
 from tac.domain.models import ArticleStatus, EvaluationResult
 from tac.infrastructure.db import store as db
 from tac.main import create_app
 from tac.settings import Settings
+from tac.web.security import guard_request
 
 
 def _settings(tmp_path, **overrides) -> Settings:
@@ -67,6 +72,49 @@ def _accepted_result() -> EvaluationResult:
             "full_reasoning": "内部原因",
         }
     )
+
+
+async def _run_guard_request(
+    settings: Settings,
+    *,
+    headers: dict[str, str],
+    chunks: list[dict[str, object]],
+) -> Response:
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            settings=settings,
+            csrf_token="token",
+            http_semaphore=asyncio.Semaphore(1),
+        )
+    )
+    scope = {
+        "type": "http",
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "http",
+        "path": "/api/admin/sources",
+        "raw_path": b"/api/admin/sources",
+        "query_string": b"",
+        "root_path": "",
+        "headers": [(key.lower().encode(), value.encode()) for key, value in headers.items()],
+        "client": ("testclient", 1234),
+        "server": ("testserver", 80),
+        "app": app,
+    }
+    events = list(chunks)
+
+    async def receive():
+        if events:
+            return events.pop(0)
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    request = Request(scope, receive)
+
+    async def call_next(current_request: Request) -> Response:
+        await current_request.body()
+        return Response(content=b"ok")
+
+    return await guard_request(request, call_next)
 
 
 def _seed_accepted(settings: Settings) -> int:
@@ -163,6 +211,49 @@ def test_request_body_too_large_returns_413(tmp_path):
     assert response.status_code == 413
 
 
+def test_request_body_too_large_without_content_length_returns_413(tmp_path):
+    settings = _settings(tmp_path, max_request_body_bytes=4)
+
+    response = asyncio.run(
+        _run_guard_request(
+            settings,
+            headers={
+                "host": "testserver",
+                "origin": "http://testserver",
+                "x-tac-csrf": "token",
+            },
+            chunks=[
+                {"type": "http.request", "body": b"ab", "more_body": True},
+                {"type": "http.request", "body": b"cde", "more_body": False},
+            ],
+        )
+    )
+
+    assert response.status_code == 413
+
+
+def test_request_body_too_large_with_spoofed_content_length_returns_413(tmp_path):
+    settings = _settings(tmp_path, max_request_body_bytes=4)
+
+    response = asyncio.run(
+        _run_guard_request(
+            settings,
+            headers={
+                "host": "testserver",
+                "origin": "http://testserver",
+                "x-tac-csrf": "token",
+                "content-length": "1",
+            },
+            chunks=[
+                {"type": "http.request", "body": b"ab", "more_body": True},
+                {"type": "http.request", "body": b"cde", "more_body": False},
+            ],
+        )
+    )
+
+    assert response.status_code == 413
+
+
 def test_admin_summary_and_articles_report_current_statuses(tmp_path):
     settings = _settings(tmp_path)
     _seed_accepted(settings)
@@ -249,6 +340,28 @@ def test_public_api_hides_summary_only_markdown(tmp_path):
 
     assert detail["content_markdown"] is None
     assert detail["source_publish_policy"] == "summary_only"
+
+
+def test_public_index_json_returns_all_accepted_articles(tmp_path):
+    settings = _settings(tmp_path)
+    conn = db.connect(settings.state_db)
+    db.migrate(conn)
+    for index in range(201):
+        article_id, _, _ = db.add_candidate(
+            conn,
+            title=f"Accepted {index}",
+            url=f"https://example.com/{index}",
+            source_name="manual",
+        )
+        db.record_fetch_success(conn, article_id, "# Body", {"crawler": "fixture"})
+        db.record_evaluation(conn, article_id, _accepted_result(), settings.model, "{}")
+    conn.close()
+    app = create_app(settings)
+
+    with TestClient(app) as client:
+        index = client.get("/api/public/index.json").json()
+
+    assert len(index) == 201
 
 
 def test_public_rss_feed_outputs_accepted_articles(tmp_path):

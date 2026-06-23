@@ -22,6 +22,9 @@ RSS_HEADERS = {
     "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8",
 }
 
+MAX_SITEMAP_DEPTH = 3
+MAX_SITEMAP_FILES = 32
+
 
 def build_session() -> Session:
     retry = Retry(
@@ -106,7 +109,7 @@ def _parse_feed_body(source: SourceConfig, content: bytes) -> list[tuple[str, st
     if feed.type == "listing":
         return _parse_listing_body(feed, content)
     if feed.type == "sitemap":
-        return _parse_sitemap_body(content)
+        return _sitemap_url_entries(content)
     parsed = feedparser.parse(content)
     if getattr(parsed, "bozo", False):
         bozo_exception = getattr(parsed, "bozo_exception", None)
@@ -120,26 +123,81 @@ def _parse_feed_body(source: SourceConfig, content: bytes) -> list[tuple[str, st
     return entries
 
 
-def _parse_sitemap_body(content: bytes) -> list[tuple[str, str]]:
-    """解析 sitemap.xml 的 urlset,返回 (url, url) 列表。
-
-    feedparser 不识别 sitemap urlset,这里用 ElementTree 手动解析。<loc> 可能带
-    sitemap namespace,也兼容无 namespace 的写法;标题在 sitemap 中通常缺失,回退为 URL。
-    """
+def _parse_sitemap_body(content: bytes) -> tuple[str, list[str]]:
+    """解析 sitemap XML,返回根类型和 loc 列表。"""
     try:
         root = ElementTree.fromstring(content)
     except ElementTree.ParseError as exc:
         raise ValueError(f"sitemap parse failed: {exc}") from exc
+    root_name = root.tag.split("}", 1)[-1]
+    if root_name not in {"urlset", "sitemapindex"}:
+        raise ValueError(f"unsupported sitemap root: {root_name}")
     # namespace 形如 {http://www.sitemaps.org/schemas/sitemap/0.9}
     namespace = ""
     if root.tag.startswith("{"):
         namespace = root.tag.split("}", 1)[0] + "}"
     locations = [node.text for node in root.iter(f"{namespace}loc")]
-    entries: list[tuple[str, str]] = []
+    urls: list[str] = []
     for loc in locations:
         url = (loc or "").strip()
         if url:
-            entries.append((url, url))
+            urls.append(url)
+    return root_name, urls
+
+
+def _sitemap_url_entries(content: bytes) -> list[tuple[str, str]]:
+    root_name, urls = _parse_sitemap_body(content)
+    if root_name != "urlset":
+        raise ValueError("sitemapindex requires recursive expansion")
+    return [(url, url) for url in urls]
+
+
+def expand_sitemap_entries(
+    session: Session,
+    settings: Settings,
+    *,
+    content: bytes,
+    current_url: str,
+    depth: int = 0,
+    seen: set[str] | None = None,
+    remaining_files: list[int] | None = None,
+) -> list[tuple[str, str]]:
+    if depth > MAX_SITEMAP_DEPTH:
+        raise ValueError(f"sitemap nesting too deep: {current_url}")
+    if remaining_files is None:
+        remaining_files = [MAX_SITEMAP_FILES]
+    if remaining_files[0] <= 0:
+        raise ValueError("sitemap expansion limit exceeded")
+    remaining_files[0] -= 1
+
+    root_name, urls = _parse_sitemap_body(content)
+    if root_name == "urlset":
+        return [(url, url) for url in urls]
+
+    seen = seen or {current_url}
+    entries: list[tuple[str, str]] = []
+    for sitemap_url in urls:
+        if sitemap_url in seen:
+            continue
+        seen.add(sitemap_url)
+        response = session.get(
+            sitemap_url,
+            headers={},
+            timeout=(10, 30),
+            allow_redirects=True,
+        )
+        response.raise_for_status()
+        entries.extend(
+            expand_sitemap_entries(
+                session,
+                settings,
+                content=response.content,
+                current_url=sitemap_url,
+                depth=depth + 1,
+                seen=seen,
+                remaining_files=remaining_files,
+            )
+        )
     return entries
 
 
@@ -210,7 +268,15 @@ def _discover_source(
                 entries=[],
             )
         response.raise_for_status()
-        entries = _parse_feed_body(source, response.content)
+        if source.feed and source.feed.type == "sitemap":
+            entries = expand_sitemap_entries(
+                session,
+                settings,
+                content=response.content,
+                current_url=feed_url,
+            )
+        else:
+            entries = _parse_feed_body(source, response.content)
         etag = response.headers.get("ETag") or etag
         modified = response.headers.get("Last-Modified") or modified
     except Exception as exc:

@@ -46,7 +46,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if settings.auto_migrate:
             conn = db.connect(settings.state_db, busy_timeout_ms=settings.db_busy_timeout_ms)
             try:
-                db.migrate(conn)
+                db.migrate(conn, migrations_dir=settings.migrations_dir)
             finally:
                 conn.close()
         _check_rsshub(settings)
