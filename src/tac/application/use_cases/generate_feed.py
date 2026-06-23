@@ -35,7 +35,8 @@ def _parse_iso(value: object) -> datetime | None:
 
 def _item_time(item: dict[str, object]) -> datetime | None:
     return (
-        _parse_iso(item.get("collected_at"))
+        _parse_iso(item.get("published_at"))
+        or _parse_iso(item.get("collected_at"))
         or _parse_iso(item.get("updated_at"))
         or _parse_iso(item.get("created_at"))
     )

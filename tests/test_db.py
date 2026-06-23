@@ -119,6 +119,24 @@ def test_set_status_updates_article_state(tmp_path):
     assert restored["status"] == "low_confidence"
 
 
+def test_recover_article_queue_resets_running_items(tmp_path):
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    article_id, _, _ = db.add_candidate(
+        conn, title="Queued", url="https://example.com/queued", source_name="s"
+    )
+    queue_id, _ = db.enqueue_article(conn, article_id=article_id, stage="fetch")
+    assert db.mark_queue_running(conn, queue_id, job_id="job-1") is True
+
+    recovered = db.recover_article_queue(conn)
+    queue = conn.execute("SELECT * FROM article_queue WHERE id = ?", (queue_id,)).fetchone()
+
+    assert recovered == 1
+    assert queue["status"] == "queued"
+    assert queue["job_id"] is None
+    assert queue["started_at"] is None
+
+
 def test_public_queries_only_include_accepted(tmp_path):
     conn = _connect(tmp_path)
     article_id, _, _ = db.add_candidate(
@@ -172,7 +190,7 @@ def test_admin_articles_pagination_search_and_failed_only(tmp_path):
     assert failed_page.items[0]["id"] == id2
 
 
-def test_robustness_migration_rebuilds_legacy_articles_schema(tmp_path):
+def test_destructive_migration_rebuilds_legacy_articles_schema(tmp_path):
     conn = db.connect(tmp_path / "state.db")
     conn.executescript(
         """
@@ -253,17 +271,29 @@ def test_robustness_migration_rebuilds_legacy_articles_schema(tmp_path):
         Path("migrations/006_article_publish_policy.sql").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
+    (migrations_dir / "007_rebuild_published_queue.sql").write_text(
+        Path("migrations/007_rebuild_published_queue.sql").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
 
     db.migrate(conn, migrations_dir=migrations_dir)
-    db.add_candidate(conn, title="New", url="https://example.com/new", source_name="s")
-
-    legacy = conn.execute("SELECT * FROM articles WHERE slug = 'legacy'").fetchone()
     columns = [row["name"] for row in conn.execute("PRAGMA table_info(articles)").fetchall()]
+    db.add_candidate(
+        conn,
+        title="New",
+        url="https://example.com/new",
+        source_name="s",
+        published_at="2026-06-01T00:00:00Z",
+    )
+    new_article = conn.execute("SELECT * FROM articles WHERE slug = 's-new'").fetchone()
 
-    assert legacy["status"] == "candidate"
+    assert conn.execute("SELECT COUNT(*) FROM articles").fetchone()[0] == 1
+    assert new_article["published_at"] == "2026-06-01T00:00:00Z"
+    assert "published_at" in columns
     assert "normalized_title" not in columns
     assert "duplicate_of" not in columns
     assert conn.execute("SELECT COUNT(*) FROM source_state").fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM article_queue").fetchone()[0] == 0
 
 
 def test_drop_evaluation_confidence_migration_preserves_rows(tmp_path):

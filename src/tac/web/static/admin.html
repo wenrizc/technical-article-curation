@@ -20,6 +20,14 @@
       <section class="summary-grid" id="summary-grid" aria-label="Article status summary"></section>
 
       <section class="toolbar" aria-label="Pipeline jobs">
+        <label>
+          Since
+          <input id="discover-since" type="date" />
+        </label>
+        <label>
+          Until
+          <input id="discover-until" type="date" />
+        </label>
         <button data-job="discover">Discover</button>
         <button data-job="fetch">Fetch</button>
         <button data-job="evaluate">Evaluate</button>
@@ -55,6 +63,7 @@
                 <th>Fetch</th>
                 <th>Evaluation</th>
                 <th>Retries</th>
+                <th>Published</th>
                 <th>Updated</th>
                 <th>Actions</th>
               </tr>

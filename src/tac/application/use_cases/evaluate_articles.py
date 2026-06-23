@@ -126,21 +126,36 @@ def evaluate_with_ai(
 
 
 def _articles_for_evaluation(
-    conn: sqlite3.Connection, article_ids: list[int] | None
+    conn: sqlite3.Connection,
+    article_ids: list[int] | None,
+    limit: int | None,
 ) -> list[sqlite3.Row]:
     if article_ids is None:
-        return db.articles_ready_for_evaluation(conn)
+        articles = db.queued_article_items(conn, stage="evaluate", limit=limit)
+        if articles:
+            return articles
+        for article in db.articles_ready_for_evaluation(conn):
+            db.enqueue_article(conn, article_id=int(article["id"]), stage="evaluate")
+        return db.queued_article_items(conn, stage="evaluate", limit=limit)
     if not article_ids:
         return []
     placeholders = ",".join("?" for _ in article_ids)
     return conn.execute(
         f"""
-        SELECT * FROM articles
+        SELECT NULL AS queue_id, articles.*
+        FROM articles
         WHERE id IN ({placeholders})
         ORDER BY id ASC
         """,
         article_ids,
     ).fetchall()
+
+
+def _row_value(row: sqlite3.Row, key: str) -> object | None:
+    try:
+        return row[key]
+    except (IndexError, KeyError):
+        return None
 
 
 def _evaluate_article(
@@ -171,11 +186,22 @@ def evaluate_pending(
     low_confidence = 0
     failed = 0
     tasks: list[tuple[sqlite3.Row, str]] = []
-    for article in _articles_for_evaluation(conn, article_ids):
-        if limit is not None and len(tasks) >= limit:
-            break
+    queue_by_article_id: dict[int, int] = {}
+    for article in _articles_for_evaluation(conn, article_ids, limit):
+        queue_id = _row_value(article, "queue_id")
+        if isinstance(queue_id, int):
+            if not db.mark_queue_running(conn, queue_id):
+                continue
+            queue_by_article_id[int(article["id"])] = queue_id
         fetch = db.latest_successful_fetch(conn, int(article["id"]))
         if not fetch:
+            if isinstance(queue_id, int):
+                db.finish_queue_item(
+                    conn,
+                    queue_id,
+                    status="failed",
+                    error="latest successful fetch not found",
+                )
             continue
         tasks.append((article, fetch["content_markdown"]))
     if not tasks:
@@ -197,6 +223,9 @@ def evaluate_pending(
             article_id, result, raw_json, error = future.result()
             if result is not None and raw_json is not None:
                 db.record_evaluation(conn, article_id, result, settings.model, raw_json)
+                queue_id = queue_by_article_id.get(article_id)
+                if queue_id is not None:
+                    db.finish_queue_item(conn, queue_id, status="succeeded")
                 if result.decision.value == "accept":
                     accepted += 1
                 elif result.decision.value == "reject":
@@ -219,6 +248,14 @@ def evaluate_pending(
                     error=str(error or "AI evaluation failed"),
                     attempts=1,
                     raw_response=None,
+                )
+            queue_id = queue_by_article_id.get(article_id)
+            if queue_id is not None:
+                db.finish_queue_item(
+                    conn,
+                    queue_id,
+                    status="failed",
+                    error=str(error or "AI evaluation failed"),
                 )
             failed += 1
     return {

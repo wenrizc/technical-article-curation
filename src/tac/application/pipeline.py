@@ -19,10 +19,12 @@ def _with_conn(settings: Settings, fn: Callable[[Any], dict[str, Any] | list[str
         conn.close()
 
 
-def run_discover(settings: Settings) -> dict[str, int]:
+def run_discover(
+    settings: Settings, *, since: str | None = None, until: str | None = None
+) -> dict[str, int]:
     def _run(conn):
         db.migrate(conn, migrations_dir=settings.migrations_dir)
-        return discover_candidates(settings, conn)
+        return discover_candidates(settings, conn, since=since, until=until)
 
     return _with_conn(settings, _run)
 
@@ -55,12 +57,18 @@ def run_publish(settings: Settings) -> dict[str, int]:
     return _with_conn(settings, _run)
 
 
-def run_all(settings: Settings, *, limit: int | None = None) -> dict[str, object]:
+def run_all(
+    settings: Settings,
+    *,
+    limit: int | None = None,
+    since: str | None = None,
+    until: str | None = None,
+) -> dict[str, object]:
     def _run(conn):
         applied = db.migrate(conn, migrations_dir=settings.migrations_dir)
         return {
             "migrate": {"applied": applied},
-            "discover": discover_candidates(settings, conn),
+            "discover": discover_candidates(settings, conn, since=since, until=until),
             "fetch": fetch_pending(settings, conn, limit=limit),
             "evaluate": evaluate_pending(settings, conn, limit=limit),
             "publish": publish_public(settings, conn),

@@ -3,7 +3,6 @@ from __future__ import annotations
 import sqlite3
 from typing import Annotated
 
-import feedparser
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, ValidationError
 
@@ -66,6 +65,13 @@ def _row_or_404(row):
     return articles.article_row_to_dict(row)
 
 
+def _preview_entry(entry) -> dict[str, object]:
+    result = {"title": entry.title, "url": entry.url}
+    if entry.published_at:
+        result["published_at"] = entry.published_at
+    return result
+
+
 def _submit(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -108,6 +114,8 @@ def list_articles(
     source: str | None = None,
     q: str | None = None,
     failed_only: bool = False,
+    since: str | None = None,
+    until: str | None = None,
     sort: str = "updated_at",
     order: str = "desc",
 ) -> dict[str, object]:
@@ -119,6 +127,8 @@ def list_articles(
         source=source,
         q=q,
         failed_only=failed_only,
+        since=since,
+        until=until,
         sort=sort,
         order=order,
     ).as_dict()
@@ -234,18 +244,11 @@ def preview_rsshub(payload: RssHubPreviewRequest, request: Request) -> dict[str,
             allow_redirects=True,
         )
         response.raise_for_status()
-        parsed = feedparser.parse(response.content)
-        if getattr(parsed, "bozo", False):
-            raise ValueError(f"feed parse failed: {getattr(parsed, 'bozo_exception', None)}")
+        parsed_entries = _parse_feed_body(SourceConfig(name="preview", feed=feed), response.content)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-    entries = []
     max_entries = max(1, min(payload.limit, 50))
-    for entry in parsed.entries[:max_entries]:
-        url = getattr(entry, "link", None)
-        title = getattr(entry, "title", None) or url
-        if url:
-            entries.append({"title": title, "url": url})
+    entries = [_preview_entry(entry) for entry in parsed_entries[:max_entries]]
     return {"status": "success", "feed_url": feed_url, "entries": entries}
 
 
@@ -274,7 +277,7 @@ def preview_sitemap(payload: SitemapPreviewRequest, request: Request) -> dict[st
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     max_entries = max(1, min(payload.limit, 50))
-    entries = [{"title": title, "url": url} for title, url in parsed_entries[:max_entries]]
+    entries = [_preview_entry(entry) for entry in parsed_entries[:max_entries]]
     return {"status": "success", "feed_url": feed.url, "entries": entries}
 
 
@@ -304,7 +307,7 @@ def preview_listing(payload: ListingPreviewRequest, request: Request) -> dict[st
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     max_entries = max(1, min(payload.limit, 50))
-    entries = [{"title": title, "url": url} for title, url in parsed_entries[:max_entries]]
+    entries = [_preview_entry(entry) for entry in parsed_entries[:max_entries]]
     return {"status": "success", "feed_url": feed.url, "entries": entries}
 
 
@@ -345,9 +348,19 @@ async def trigger_schedule(
 
 
 @router.post("/jobs/discover")
-def run_discover(request: Request, background_tasks: BackgroundTasks) -> dict[str, object]:
+def run_discover(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    since: str | None = None,
+    until: str | None = None,
+) -> dict[str, object]:
     settings = settings_from_request(request)
-    return _submit(request, background_tasks, "discover", lambda: pipeline.run_discover(settings))
+    return _submit(
+        request,
+        background_tasks,
+        "discover",
+        lambda: pipeline.run_discover(settings, since=since, until=until),
+    )
 
 
 @router.post("/jobs/fetch")
@@ -369,6 +382,16 @@ def run_publish(request: Request, background_tasks: BackgroundTasks) -> dict[str
 
 
 @router.post("/jobs/run")
-def run_all(request: Request, background_tasks: BackgroundTasks) -> dict[str, object]:
+def run_all(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    since: str | None = None,
+    until: str | None = None,
+) -> dict[str, object]:
     settings = settings_from_request(request)
-    return _submit(request, background_tasks, "run", lambda: pipeline.run_all(settings))
+    return _submit(
+        request,
+        background_tasks,
+        "run",
+        lambda: pipeline.run_all(settings, since=since, until=until),
+    )

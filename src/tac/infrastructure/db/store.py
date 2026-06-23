@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from tac.domain.models import ArticleStatus, EvaluationResult
+from tac.shared.dates import parse_datetime
 from tac.shared.utils import normalize_url, source_title_slug, utc_now_iso
 
 
@@ -119,6 +120,123 @@ def mark_interrupted_job_runs(conn: sqlite3.Connection, *, finished_at: str) -> 
     return int(cur.rowcount)
 
 
+def recover_article_queue(conn: sqlite3.Connection) -> int:
+    cur = conn.execute(
+        """
+        UPDATE article_queue
+        SET status = 'queued',
+            job_id = NULL,
+            started_at = NULL,
+            error = NULL
+        WHERE status = 'running'
+        """
+    )
+    conn.commit()
+    return int(cur.rowcount)
+
+
+def enqueue_article(
+    conn: sqlite3.Connection,
+    *,
+    article_id: int,
+    stage: str,
+    range_since: str | None = None,
+    range_until: str | None = None,
+    job_id: str | None = None,
+) -> tuple[int, bool]:
+    existing = conn.execute(
+        """
+        SELECT id FROM article_queue
+        WHERE article_id = ?
+          AND stage = ?
+          AND status IN ('queued', 'running')
+        ORDER BY id ASC
+        LIMIT 1
+        """,
+        (article_id, stage),
+    ).fetchone()
+    if existing:
+        return int(existing["id"]), False
+    now = utc_now_iso()
+    cur = conn.execute(
+        """
+        INSERT INTO article_queue(
+            article_id, stage, status, job_id, range_since, range_until, created_at
+        )
+        VALUES (?, ?, 'queued', ?, ?, ?, ?)
+        """,
+        (article_id, stage, job_id, range_since, range_until, now),
+    )
+    conn.commit()
+    return int(cur.lastrowid), True
+
+
+def queued_article_items(
+    conn: sqlite3.Connection,
+    *,
+    stage: str,
+    limit: int | None = None,
+) -> list[sqlite3.Row]:
+    limit_sql = "" if limit is None else "LIMIT ?"
+    params: list[object] = [stage]
+    if limit is not None:
+        params.append(limit)
+    return conn.execute(
+        f"""
+        SELECT
+            q.id AS queue_id,
+            q.stage AS queue_stage,
+            q.status AS queue_status,
+            q.range_since,
+            q.range_until,
+            a.*
+        FROM article_queue q
+        JOIN articles a ON a.id = q.article_id
+        WHERE q.stage = ?
+          AND q.status = 'queued'
+        ORDER BY q.id ASC
+        {limit_sql}
+        """,
+        params,
+    ).fetchall()
+
+
+def mark_queue_running(
+    conn: sqlite3.Connection,
+    queue_id: int,
+    *,
+    job_id: str | None = None,
+) -> bool:
+    cur = conn.execute(
+        """
+        UPDATE article_queue
+        SET status = 'running', job_id = ?, started_at = ?, error = NULL
+        WHERE id = ? AND status = 'queued'
+        """,
+        (job_id, utc_now_iso(), queue_id),
+    )
+    conn.commit()
+    return int(cur.rowcount) == 1
+
+
+def finish_queue_item(
+    conn: sqlite3.Connection,
+    queue_id: int,
+    *,
+    status: str,
+    error: str | None = None,
+) -> None:
+    conn.execute(
+        """
+        UPDATE article_queue
+        SET status = ?, finished_at = ?, error = ?
+        WHERE id = ?
+        """,
+        (status, utc_now_iso(), error, queue_id),
+    )
+    conn.commit()
+
+
 def get_job_run(conn: sqlite3.Connection, job_id: str) -> sqlite3.Row | None:
     return conn.execute(
         "SELECT * FROM job_runs WHERE job_id = ?",
@@ -204,13 +322,21 @@ def add_candidate(
     title: str,
     url: str,
     source_name: str,
+    published_at: str | None = None,
     source_tags: Iterable[str] = (),
     source_publish_policy: str = "full_content",
 ) -> tuple[int, ArticleStatus, bool]:
     normalized_url = normalize_url(url)
     now = utc_now_iso()
+    parsed_published_at = parse_datetime(published_at)
     existing = find_existing(conn, normalized_url)
     if existing:
+        if parsed_published_at and not existing["published_at"]:
+            conn.execute(
+                "UPDATE articles SET published_at = ?, updated_at = ? WHERE id = ?",
+                (parsed_published_at, now, existing["id"]),
+            )
+            conn.commit()
         return int(existing["id"]), ArticleStatus(existing["status"]), False
 
     status = ArticleStatus.candidate
@@ -222,9 +348,10 @@ def add_candidate(
         """
         INSERT INTO articles(
             source_name, title, url, normalized_url, slug,
-            status, retry_count, created_at, updated_at, source_tags, source_publish_policy
+            status, retry_count, published_at, created_at, updated_at, source_tags,
+            source_publish_policy
         )
-        VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
         """,
         (
             source_name,
@@ -233,6 +360,7 @@ def add_candidate(
             normalized_url,
             slug,
             status.value,
+            parsed_published_at,
             now,
             now,
             json.dumps(list(source_tags), ensure_ascii=False),
@@ -295,6 +423,7 @@ def record_fetch_success(
     article_id: int,
     content_markdown: str,
     metadata: dict[str, object],
+    published_at: str | None = None,
 ) -> bool:
     article = get_article(conn, article_id)
     if not article:
@@ -307,10 +436,17 @@ def record_fetch_success(
         """,
         (article_id, now, content_markdown, json.dumps(metadata, ensure_ascii=False)),
     )
-    conn.execute(
-        "UPDATE articles SET updated_at = ?, error = NULL WHERE id = ?",
-        (now, article_id),
-    )
+    parsed_published_at = parse_datetime(published_at)
+    if parsed_published_at and not article["published_at"]:
+        conn.execute(
+            "UPDATE articles SET published_at = ?, updated_at = ?, error = NULL WHERE id = ?",
+            (parsed_published_at, now, article_id),
+        )
+    else:
+        conn.execute(
+            "UPDATE articles SET updated_at = ?, error = NULL WHERE id = ?",
+            (now, article_id),
+        )
     conn.commit()
     return True
 
@@ -427,7 +563,7 @@ def accepted_articles_for_publish(conn: sqlite3.Connection) -> list[sqlite3.Row]
               SELECT MAX(id) FROM evaluations
               WHERE article_id = a.id
           )
-        ORDER BY a.collected_at DESC, a.id DESC
+        ORDER BY COALESCE(a.published_at, a.collected_at, a.updated_at, a.created_at) DESC, a.id DESC
         """
     ).fetchall()
 

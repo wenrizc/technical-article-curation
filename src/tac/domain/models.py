@@ -65,6 +65,7 @@ class EvaluationResult(BaseModel):
 class ManualUrl(BaseModel):
     url: str
     title: str | None = None
+    published_at: str | None = None
     tags: list[str] = Field(default_factory=list)
 
 
@@ -183,5 +184,6 @@ class CandidateArticle(BaseModel):
     title: str
     url: str
     source_name: str
+    published_at: str | None = None
     source_tags: list[str] = Field(default_factory=list)
     publish_policy: Literal["full_content", "summary_only"] = "full_content"

@@ -6,15 +6,17 @@ from dataclasses import dataclass
 from typing import Literal
 
 from tac.domain.models import ArticleStatus
+from tac.shared.dates import parse_datetime
 from tac.shared.utils import utc_now_iso
 
-SortField = Literal["updated_at", "created_at", "collected_at", "retry_count"]
+SortField = Literal["updated_at", "created_at", "collected_at", "published_at", "retry_count"]
 SortOrder = Literal["asc", "desc"]
 
 SORT_COLUMNS: dict[str, str] = {
     "updated_at": "a.updated_at",
     "created_at": "a.created_at",
     "collected_at": "a.collected_at",
+    "published_at": "a.published_at",
     "retry_count": "a.retry_count",
 }
 
@@ -84,6 +86,8 @@ def _article_filters(
     source: str | None,
     q: str | None,
     failed_only: bool,
+    since: str | None = None,
+    until: str | None = None,
 ) -> tuple[list[str], list[object]]:
     where: list[str] = []
     params: list[object] = []
@@ -101,6 +105,12 @@ def _article_filters(
         pattern = f"%{q.strip()}%"
         where.append("(a.title LIKE ? OR a.url LIKE ? OR a.source_name LIKE ?)")
         params.extend([pattern, pattern, pattern])
+    if parsed_since := parse_datetime(since):
+        where.append("a.published_at >= ?")
+        params.append(parsed_since)
+    if parsed_until := parse_datetime(until, date_as_end=True):
+        where.append("a.published_at < ?")
+        params.append(parsed_until)
     if failed_only:
         where.append(
             """
@@ -130,6 +140,8 @@ def list_admin_articles(
     source: str | None = None,
     q: str | None = None,
     failed_only: bool = False,
+    since: str | None = None,
+    until: str | None = None,
     sort: str = "updated_at",
     order: str = "desc",
 ) -> Page:
@@ -141,6 +153,8 @@ def list_admin_articles(
         source=source,
         q=q,
         failed_only=failed_only,
+        since=since,
+        until=until,
     )
     where_sql = "WHERE " + " AND ".join(where) if where else ""
     total = conn.execute(
@@ -157,9 +171,22 @@ def list_admin_articles(
             a.source_name,
             a.status,
             a.retry_count,
+            a.published_at,
             a.created_at,
             a.updated_at,
             a.collected_at,
+            (
+                SELECT q.status FROM article_queue q
+                WHERE q.article_id = a.id AND q.stage = 'fetch'
+                ORDER BY q.id DESC
+                LIMIT 1
+            ) AS fetch_queue_status,
+            (
+                SELECT q.status FROM article_queue q
+                WHERE q.article_id = a.id AND q.stage = 'evaluate'
+                ORDER BY q.id DESC
+                LIMIT 1
+            ) AS evaluate_queue_status,
             (
                 SELECT f.status FROM fetches f
                 WHERE f.article_id = a.id
@@ -221,6 +248,7 @@ def list_public_articles(
             a.source_name AS source,
             a.source_publish_policy AS publish_policy,
             a.status,
+            a.published_at,
             a.collected_at,
             a.created_at,
             a.updated_at,
@@ -250,7 +278,7 @@ def list_public_articles(
             ) AS dimensions
         FROM articles a
         {where_sql}
-        ORDER BY a.collected_at DESC, a.id DESC
+        ORDER BY COALESCE(a.published_at, a.collected_at, a.updated_at, a.created_at) DESC, a.id DESC
         LIMIT ? OFFSET ?
         """,
         [*params, page_size, offset],
@@ -280,6 +308,7 @@ def list_all_public_articles(
             a.source_name AS source,
             a.source_publish_policy AS publish_policy,
             a.status,
+            a.published_at,
             a.collected_at,
             a.created_at,
             a.updated_at,
@@ -309,7 +338,7 @@ def list_all_public_articles(
             ) AS dimensions
         FROM articles a
         {where_sql}
-        ORDER BY a.collected_at DESC, a.id DESC
+        ORDER BY COALESCE(a.published_at, a.collected_at, a.updated_at, a.created_at) DESC, a.id DESC
         """,
         params,
     ).fetchall()
@@ -347,11 +376,21 @@ def get_article_detail(conn: sqlite3.Connection, article_id: int) -> dict[str, o
         """,
         (article_id,),
     ).fetchone()
+    latest_queue = conn.execute(
+        """
+        SELECT * FROM article_queue
+        WHERE article_id = ?
+        ORDER BY id DESC
+        LIMIT 10
+        """,
+        (article_id,),
+    ).fetchall()
     return {
         "article": article_row_to_dict(article),
         "latest_fetch": article_row_to_dict(latest_fetch) if latest_fetch else None,
         "latest_evaluation": article_row_to_dict(latest_evaluation) if latest_evaluation else None,
         "latest_evaluation_failure": dict(evaluation_failure) if evaluation_failure else None,
+        "queue": [dict(row) for row in latest_queue],
     }
 
 

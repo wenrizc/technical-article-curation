@@ -16,6 +16,7 @@ from tac.domain.models import FeedConfig, SourceConfig
 from tac.infrastructure.db import store as db
 from tac.infrastructure.sources.yaml_loader import load_sources, manual_candidates
 from tac.settings import Settings
+from tac.shared.dates import TimeRange, build_time_range, parse_datetime
 
 RSS_HEADERS = {
     "User-Agent": "technical-article-curation/0.1 (+https://example.invalid)",
@@ -61,6 +62,13 @@ def _request_timeout(settings: Settings, feed: FeedConfig | None) -> tuple[int, 
 
 
 @dataclass(frozen=True)
+class DiscoveredEntry:
+    title: str
+    url: str
+    published_at: str | None = None
+
+
+@dataclass(frozen=True)
 class SourceDiscoveryResult:
     source_name: str
     source_tags: list[str]
@@ -69,7 +77,7 @@ class SourceDiscoveryResult:
     modified: str | None
     last_status: str
     last_error: str | None
-    entries: list[tuple[str, str]]
+    entries: list[DiscoveredEntry]
 
 
 def build_rsshub_feed_url(feed: FeedConfig, settings: Settings) -> str:
@@ -96,7 +104,16 @@ def build_feed_url(source: SourceConfig, settings: Settings) -> str:
     raise ValueError(f"unsupported feed type: {feed_type}")
 
 
-def _parse_feed_body(source: SourceConfig, content: bytes) -> list[tuple[str, str]]:
+def _entry_published_at(entry: object) -> str | None:
+    return (
+        parse_datetime(getattr(entry, "published_parsed", None))
+        or parse_datetime(getattr(entry, "published", None))
+        or parse_datetime(getattr(entry, "updated_parsed", None))
+        or parse_datetime(getattr(entry, "updated", None))
+    )
+
+
+def _parse_feed_body(source: SourceConfig, content: bytes) -> list[DiscoveredEntry]:
     """解析抓取到的信源内容,返回 (title, url) 列表。
 
     direct/rsshub 复用 feedparser;sitemap 走 ElementTree(urlset 不被 feedparser
@@ -114,12 +131,18 @@ def _parse_feed_body(source: SourceConfig, content: bytes) -> list[tuple[str, st
     if getattr(parsed, "bozo", False):
         bozo_exception = getattr(parsed, "bozo_exception", None)
         raise ValueError(f"feed parse failed: {bozo_exception}")
-    entries: list[tuple[str, str]] = []
+    entries: list[DiscoveredEntry] = []
     for entry in parsed.entries:
         url = getattr(entry, "link", None)
         title = getattr(entry, "title", None) or url
         if url:
-            entries.append((title, _normalize_feed_entry_url(source, url)))
+            entries.append(
+                DiscoveredEntry(
+                    title=title,
+                    url=_normalize_feed_entry_url(source, url),
+                    published_at=_entry_published_at(entry),
+                )
+            )
     return entries
 
 
@@ -155,7 +178,7 @@ def _normalize_feed_entry_url(source: SourceConfig, url: str) -> str:
     return urljoin(base, cleaned)
 
 
-def _parse_sitemap_body(content: bytes) -> tuple[str, list[str]]:
+def _parse_sitemap_body(content: bytes) -> tuple[str, list[DiscoveredEntry]]:
     """解析 sitemap XML,返回根类型和 loc 列表。"""
     try:
         root = ElementTree.fromstring(content)
@@ -168,20 +191,32 @@ def _parse_sitemap_body(content: bytes) -> tuple[str, list[str]]:
     namespace = ""
     if root.tag.startswith("{"):
         namespace = root.tag.split("}", 1)[0] + "}"
-    locations = [node.text for node in root.iter(f"{namespace}loc")]
-    urls: list[str] = []
-    for loc in locations:
-        url = (loc or "").strip()
+    entries: list[DiscoveredEntry] = []
+    for node in root.findall(f"{namespace}url"):
+        loc = node.find(f"{namespace}loc")
+        url = ((loc.text if loc is not None else "") or "").strip()
         if url:
-            urls.append(url)
-    return root_name, urls
+            lastmod = node.find(f"{namespace}lastmod")
+            entries.append(
+                DiscoveredEntry(
+                    title=url,
+                    url=url,
+                    published_at=parse_datetime(lastmod.text if lastmod is not None else None),
+                )
+            )
+    for node in root.findall(f"{namespace}sitemap"):
+        loc = node.find(f"{namespace}loc")
+        url = ((loc.text if loc is not None else "") or "").strip()
+        if url:
+            entries.append(DiscoveredEntry(title=url, url=url))
+    return root_name, entries
 
 
-def _sitemap_url_entries(content: bytes) -> list[tuple[str, str]]:
-    root_name, urls = _parse_sitemap_body(content)
+def _sitemap_url_entries(content: bytes) -> list[DiscoveredEntry]:
+    root_name, entries = _parse_sitemap_body(content)
     if root_name != "urlset":
         raise ValueError("sitemapindex requires recursive expansion")
-    return [(url, url) for url in urls]
+    return entries
 
 
 def expand_sitemap_entries(
@@ -193,7 +228,7 @@ def expand_sitemap_entries(
     depth: int = 0,
     seen: set[str] | None = None,
     remaining_files: list[int] | None = None,
-) -> list[tuple[str, str]]:
+) -> list[DiscoveredEntry]:
     if depth > MAX_SITEMAP_DEPTH:
         raise ValueError(f"sitemap nesting too deep: {current_url}")
     if remaining_files is None:
@@ -202,13 +237,14 @@ def expand_sitemap_entries(
         raise ValueError("sitemap expansion limit exceeded")
     remaining_files[0] -= 1
 
-    root_name, urls = _parse_sitemap_body(content)
+    root_name, entries = _parse_sitemap_body(content)
     if root_name == "urlset":
-        return [(url, url) for url in urls]
+        return entries
 
     seen = seen or {current_url}
-    entries: list[tuple[str, str]] = []
-    for sitemap_url in urls:
+    discovered: list[DiscoveredEntry] = []
+    for entry in entries:
+        sitemap_url = entry.url
         if sitemap_url in seen:
             continue
         seen.add(sitemap_url)
@@ -219,7 +255,7 @@ def expand_sitemap_entries(
             allow_redirects=True,
         )
         response.raise_for_status()
-        entries.extend(
+        discovered.extend(
             expand_sitemap_entries(
                 session,
                 settings,
@@ -230,10 +266,10 @@ def expand_sitemap_entries(
                 remaining_files=remaining_files,
             )
         )
-    return entries
+    return discovered
 
 
-def _parse_listing_body(feed: FeedConfig, content: bytes) -> list[tuple[str, str]]:
+def _parse_listing_body(feed: FeedConfig, content: bytes) -> list[DiscoveredEntry]:
     """从 HTML 列表页抽取文章链接。
 
     使用 link_selector 选出文章锚点,base_url 或 feed.url 的 origin 解析相对链接,
@@ -253,7 +289,7 @@ def _parse_listing_body(feed: FeedConfig, content: bytes) -> list[tuple[str, str
         else None
     )
     patterns = [p.strip() for p in feed.url_patterns if p and p.strip()]
-    entries: list[tuple[str, str]] = []
+    entries: list[DiscoveredEntry] = []
     for index, node in enumerate(link_nodes):
         href = node.get("href")
         if not href:
@@ -269,7 +305,7 @@ def _parse_listing_body(feed: FeedConfig, content: bytes) -> list[tuple[str, str
             title = title_nodes[index].get_text(strip=True) or None
         if not title:
             title = node.get_text(strip=True) or resolved
-        entries.append((title, resolved))
+        entries.append(DiscoveredEntry(title=title, url=resolved))
     return entries
 
 
@@ -335,11 +371,65 @@ def _discover_source(
     )
 
 
-def discover_candidates(settings: Settings, conn: sqlite3.Connection) -> dict[str, int]:
+def _settings_time_range(
+    settings: Settings, *, since: str | None = None, until: str | None = None
+) -> TimeRange:
+    return build_time_range(
+        since=since if since is not None else settings.discover_since,
+        until=until if until is not None else settings.discover_until,
+        since_days=settings.discover_since_days,
+    )
+
+
+def _add_candidate_and_queue_fetch(
+    settings: Settings,
+    conn: sqlite3.Connection,
+    *,
+    title: str,
+    url: str,
+    source_name: str,
+    published_at: str | None,
+    source_tags: list[str],
+    source_publish_policy: str,
+    time_range: TimeRange,
+) -> tuple[bool, bool, bool]:
+    if published_at and not time_range.contains(published_at):
+        return False, False, True
+    article_id, status, was_inserted = db.add_candidate(
+        conn,
+        title=title,
+        url=url,
+        source_name=source_name,
+        published_at=published_at,
+        source_tags=source_tags,
+        source_publish_policy=source_publish_policy,
+    )
+    was_queued = False
+    if status.value == "candidate" and db.latest_successful_fetch(conn, article_id) is None:
+        _, was_queued = db.enqueue_article(
+            conn,
+            article_id=article_id,
+            stage="fetch",
+            range_since=time_range.since,
+            range_until=time_range.until,
+        )
+    return was_inserted, was_queued, False
+
+
+def discover_candidates(
+    settings: Settings,
+    conn: sqlite3.Connection,
+    *,
+    since: str | None = None,
+    until: str | None = None,
+) -> dict[str, int]:
     config = load_sources(settings.sources_path)
+    time_range = _settings_time_range(settings, since=since, until=until)
     found = 0
     inserted = 0
+    queued_fetch = 0
     skipped = 0
+    out_of_range = 0
     sources_failed = 0
     sources_not_modified = 0
 
@@ -367,40 +457,60 @@ def discover_candidates(settings: Settings, conn: sqlite3.Connection) -> dict[st
             if result.last_status == "not_modified":
                 sources_not_modified += 1
                 continue
-            for title, url in result.entries:
+            for entry in result.entries:
                 found += 1
-                _, _, was_inserted = db.add_candidate(
+                was_inserted, was_queued, was_out_of_range = _add_candidate_and_queue_fetch(
+                    settings,
                     conn,
-                    title=title,
-                    url=url,
+                    title=entry.title,
+                    url=entry.url,
                     source_name=result.source_name,
+                    published_at=entry.published_at,
                     source_tags=result.source_tags,
                     source_publish_policy=result.source_publish_policy,
+                    time_range=time_range,
                 )
+                if was_out_of_range:
+                    out_of_range += 1
+                    skipped += 1
+                    continue
                 if was_inserted:
                     inserted += 1
                 else:
                     skipped += 1
+                if was_queued:
+                    queued_fetch += 1
 
     for candidate in manual_candidates(config):
         found += 1
-        _, _, was_inserted = db.add_candidate(
+        was_inserted, was_queued, was_out_of_range = _add_candidate_and_queue_fetch(
+            settings,
             conn,
             title=candidate.title,
             url=candidate.url,
             source_name=candidate.source_name,
+            published_at=candidate.published_at,
             source_tags=candidate.source_tags,
             source_publish_policy=candidate.publish_policy,
+            time_range=time_range,
         )
+        if was_out_of_range:
+            out_of_range += 1
+            skipped += 1
+            continue
         if was_inserted:
             inserted += 1
         else:
             skipped += 1
+        if was_queued:
+            queued_fetch += 1
 
     return {
         "found": found,
         "inserted": inserted,
+        "queued_fetch": queued_fetch,
         "skipped": skipped,
+        "out_of_range": out_of_range,
         "sources_failed": sources_failed,
         "sources_not_modified": sources_not_modified,
     }

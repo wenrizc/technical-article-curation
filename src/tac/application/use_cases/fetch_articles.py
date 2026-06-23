@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from time import sleep
 
+from bs4 import BeautifulSoup
+
 from tac.infrastructure.db import store as db
 from tac.settings import Settings
+from tac.shared.dates import TimeRange, parse_datetime
 
 FETCH_HEADERS = {
     "User-Agent": "technical-article-curation/0.1 (+https://example.invalid)",
@@ -22,10 +26,63 @@ _PLAYWRIGHT_FALLBACK_REASON: str | None = None
 class FetchResult:
     markdown: str
     metadata: dict[str, object]
+    published_at: str | None = None
 
 
 class FetchError(RuntimeError):
     pass
+
+
+def _json_ld_dates(soup: BeautifulSoup) -> str | None:
+    for script in soup.select('script[type="application/ld+json"]'):
+        text = script.string or script.get_text()
+        if not text.strip():
+            continue
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            continue
+        stack = payload if isinstance(payload, list) else [payload]
+        while stack:
+            item = stack.pop(0)
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
+            if not isinstance(item, dict):
+                continue
+            for key in ("datePublished", "dateModified", "dateCreated"):
+                if parsed := parse_datetime(item.get(key)):
+                    return parsed
+            graph = item.get("@graph")
+            if isinstance(graph, list):
+                stack.extend(graph)
+    return None
+
+
+def extract_published_at_from_html(html: str) -> str | None:
+    soup = BeautifulSoup(html, "lxml")
+    meta_names = [
+        ("property", "article:published_time"),
+        ("property", "article:modified_time"),
+        ("property", "og:updated_time"),
+        ("name", "date"),
+        ("name", "pubdate"),
+        ("name", "publishdate"),
+        ("name", "timestamp"),
+        ("name", "DC.date.issued"),
+        ("itemprop", "datePublished"),
+        ("itemprop", "dateModified"),
+    ]
+    for attr, value in meta_names:
+        node = soup.find("meta", attrs={attr: value})
+        if node and (parsed := parse_datetime(node.get("content"))):
+            return parsed
+    if parsed := _json_ld_dates(soup):
+        return parsed
+    for node in soup.find_all("time"):
+        if parsed := parse_datetime(node.get("datetime") or node.get_text(strip=True)):
+            return parsed
+    return None
 
 
 def _crawler_result(
@@ -49,7 +106,11 @@ def _crawler_result(
     }
     if fallback_reason:
         metadata["fallback_reason"] = fallback_reason
-    return FetchResult(markdown=str(markdown).strip(), metadata=metadata)
+    html = getattr(result, "html", None)
+    published_at = extract_published_at_from_html(str(html)) if html else None
+    if published_at:
+        metadata["published_at"] = published_at
+    return FetchResult(markdown=str(markdown).strip(), metadata=metadata, published_at=published_at)
 
 
 def _browser_unavailable(exc: Exception) -> bool:
@@ -147,21 +208,38 @@ def fetch_url(
 
 
 def _articles_for_fetch(
-    conn: sqlite3.Connection, *, max_retry: int, article_ids: list[int] | None
+    conn: sqlite3.Connection,
+    *,
+    max_retry: int,
+    article_ids: list[int] | None,
+    limit: int | None,
 ) -> list[sqlite3.Row]:
     if article_ids is None:
-        return db.articles_ready_for_fetch(conn, max_retry)
+        articles = db.queued_article_items(conn, stage="fetch", limit=limit)
+        if articles:
+            return articles
+        for article in db.articles_ready_for_fetch(conn, max_retry):
+            db.enqueue_article(conn, article_id=int(article["id"]), stage="fetch")
+        return db.queued_article_items(conn, stage="fetch", limit=limit)
     if not article_ids:
         return []
     placeholders = ",".join("?" for _ in article_ids)
     return conn.execute(
         f"""
-        SELECT * FROM articles
+        SELECT NULL AS queue_id, NULL AS range_since, NULL AS range_until, articles.*
+        FROM articles
         WHERE id IN ({placeholders})
         ORDER BY id ASC
         """,
         article_ids,
     ).fetchall()
+
+
+def _row_value(row: sqlite3.Row, key: str) -> object | None:
+    try:
+        return row[key]
+    except (IndexError, KeyError):
+        return None
 
 
 def _fetch_article(
@@ -199,24 +277,79 @@ def fetch_pending(
 ) -> dict[str, int]:
     succeeded = 0
     failed = 0
-    articles = _articles_for_fetch(conn, max_retry=settings.max_retry, article_ids=article_ids)
-    if limit is not None:
-        articles = articles[:limit]
+    skipped = 0
+    queued_evaluate = 0
+    articles = _articles_for_fetch(
+        conn,
+        max_retry=settings.max_retry,
+        article_ids=article_ids,
+        limit=limit,
+    )
     if not articles:
-        return {"attempted": 0, "succeeded": 0, "failed": 0}
+        return {"attempted": 0, "succeeded": 0, "failed": 0, "skipped": 0, "queued_evaluate": 0}
 
     max_workers = max(1, settings.fetch_max_concurrency)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(_fetch_article, settings, article) for article in articles]
+        futures = []
+        queue_by_article_id: dict[int, int] = {}
+        range_by_article_id: dict[int, TimeRange] = {}
+        for article in articles:
+            queue_id = _row_value(article, "queue_id")
+            if isinstance(queue_id, int):
+                if not db.mark_queue_running(conn, queue_id):
+                    continue
+                queue_by_article_id[int(article["id"])] = queue_id
+                range_by_article_id[int(article["id"])] = TimeRange(
+                    since=_row_value(article, "range_since"),
+                    until=_row_value(article, "range_until"),
+                )
+            futures.append(executor.submit(_fetch_article, settings, article))
         for future in as_completed(futures):
             article_id, result, error = future.result()
+            queue_id = queue_by_article_id.get(article_id)
             if result and db.record_fetch_success(
-                conn, article_id, result.markdown, result.metadata
+                conn, article_id, result.markdown, result.metadata, published_at=result.published_at
             ):
+                article = db.get_article(conn, article_id)
+                time_range = range_by_article_id.get(article_id, TimeRange())
+                if article and not time_range.contains(article["published_at"]):
+                    if queue_id is not None:
+                        db.finish_queue_item(
+                            conn,
+                            queue_id,
+                            status="skipped_out_of_range",
+                            error="published_at is outside requested range",
+                        )
+                    skipped += 1
+                    continue
+                _, was_queued = db.enqueue_article(
+                    conn,
+                    article_id=article_id,
+                    stage="evaluate",
+                    range_since=time_range.since,
+                    range_until=time_range.until,
+                )
+                if was_queued:
+                    queued_evaluate += 1
+                if queue_id is not None:
+                    db.finish_queue_item(conn, queue_id, status="succeeded")
                 succeeded += 1
             else:
                 db.record_failure(conn, article_id, error or "fetch result was not written")
+                if queue_id is not None:
+                    db.finish_queue_item(
+                        conn,
+                        queue_id,
+                        status="failed",
+                        error=error or "fetch result was not written",
+                    )
                 failed += 1
             if settings.fetch_delay_seconds > 0:
                 sleep(settings.fetch_delay_seconds)
-    return {"attempted": len(articles), "succeeded": succeeded, "failed": failed}
+    return {
+        "attempted": len(articles),
+        "succeeded": succeeded,
+        "failed": failed,
+        "skipped": skipped,
+        "queued_evaluate": queued_evaluate,
+    }

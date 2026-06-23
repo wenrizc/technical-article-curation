@@ -4,7 +4,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from tac.application.use_cases.fetch_articles import FetchError, fetch_pending, fetch_url
+from tac.application.use_cases.fetch_articles import (
+    FetchError,
+    FetchResult,
+    fetch_pending,
+    fetch_url,
+)
 from tac.infrastructure.db import store as db
 from tac.settings import Settings
 
@@ -103,6 +108,65 @@ def test_fetch_pending_records_crawler4ai_failure(tmp_path, monkeypatch):
     assert fetch["status"] == "failed"
     assert "no markdown" in fetch["error"]
     assert article["status"] == "candidate"
+
+
+def test_fetch_pending_skips_out_of_range_after_page_date_extraction(tmp_path, monkeypatch):
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    article_id, _, _ = db.add_candidate(
+        conn,
+        title="Title",
+        url="https://example.com/article",
+        source_name="s",
+    )
+    db.enqueue_article(
+        conn,
+        article_id=article_id,
+        stage="fetch",
+        range_since="2026-01-01T00:00:00Z",
+        range_until="2027-01-01T00:00:00Z",
+    )
+    settings = Settings(
+        state_db=tmp_path / "state.db",
+        sources_path=tmp_path / "sources.yaml",
+        public_dir=tmp_path / "public",
+        max_retry=3,
+        model="fixture-model",
+        base_url="https://example.invalid/v1",
+        api_key=None,
+        ai_response_path=None,
+        fetch_fixture_path=None,
+        crawler4ai_enabled=True,
+        fetch_delay_seconds=0,
+        evaluation_max_attempts=3,
+        prompt_language="zh-CN",
+        prompt_path=tmp_path / "evaluate.md",
+        few_shot_dir=tmp_path / "few_shots",
+    )
+
+    def fetch(_url, *, crawler4ai_enabled=True, timeout_seconds=90):
+        return FetchResult(
+            markdown="# Body",
+            metadata={"crawler": "fixture"},
+            published_at="2025-06-01T00:00:00Z",
+        )
+
+    monkeypatch.setattr("tac.application.use_cases.fetch_articles.fetch_url", fetch)
+
+    result = fetch_pending(settings, conn)
+    article = db.get_article(conn, article_id)
+    queue = conn.execute(
+        "SELECT * FROM article_queue WHERE article_id = ?", (article_id,)
+    ).fetchone()
+    evaluate_queue_count = conn.execute(
+        "SELECT COUNT(*) FROM article_queue WHERE article_id = ? AND stage = 'evaluate'",
+        (article_id,),
+    ).fetchone()[0]
+
+    assert result["skipped"] == 1
+    assert article["published_at"] == "2025-06-01T00:00:00Z"
+    assert queue["status"] == "skipped_out_of_range"
+    assert evaluate_queue_count == 0
 
 
 def test_fetch_pending_uses_configured_concurrency(tmp_path, monkeypatch):

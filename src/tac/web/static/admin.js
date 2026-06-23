@@ -6,6 +6,8 @@ const state = {
   q: new URLSearchParams(location.search).get("q") || "",
   status: new URLSearchParams(location.search).get("status") || "",
   source: new URLSearchParams(location.search).get("source") || "",
+  since: new URLSearchParams(location.search).get("since") || "",
+  until: new URLSearchParams(location.search).get("until") || "",
   failedOnly: new URLSearchParams(location.search).get("failed_only") === "true",
   sourcesHash: "",
 };
@@ -40,6 +42,8 @@ function updateUrl() {
   if (state.q) params.set("q", state.q);
   if (state.status) params.set("status", state.status);
   if (state.source) params.set("source", state.source);
+  if (state.since) params.set("since", state.since);
+  if (state.until) params.set("until", state.until);
   if (state.failedOnly) params.set("failed_only", "true");
   history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
 }
@@ -86,9 +90,10 @@ function renderArticles(page) {
           <td><button data-action="detail" data-id="${item.id}">${escapeHtml(item.title)}</button><br><span class="muted">${escapeHtml(item.url)}</span></td>
           <td>${escapeHtml(item.source_name)}</td>
           <td><span class="tag ${statusClass}">${item.status}</span></td>
-          <td>${escapeHtml(item.fetch_status || "-")}<br><span class="muted">${escapeHtml(item.fetch_error || "")}</span></td>
-          <td>${escapeHtml(item.evaluation_status || "-")}<br><span class="muted">${escapeHtml(item.evaluation_error || "")}</span></td>
+          <td>${escapeHtml(item.fetch_status || item.fetch_queue_status || "-")}<br><span class="muted">${escapeHtml(item.fetch_error || "")}</span></td>
+          <td>${escapeHtml(item.evaluation_status || item.evaluate_queue_status || "-")}<br><span class="muted">${escapeHtml(item.evaluation_error || "")}</span></td>
           <td>${item.retry_count}</td>
+          <td>${escapeHtml(item.published_at || "-")}</td>
           <td>${escapeHtml(item.updated_at)}</td>
           <td class="actions">
             <button data-action="retry-fetch" data-id="${item.id}">fetch</button>
@@ -111,12 +116,14 @@ async function loadArticles() {
   const params = new URLSearchParams({
     page: String(state.page),
     page_size: String(state.pageSize),
-    sort: "updated_at",
+    sort: "published_at",
     order: "desc",
   });
   if (state.q) params.set("q", state.q);
   if (state.status) params.set("status", state.status);
   if (state.source) params.set("source", state.source);
+  if (state.since) params.set("since", state.since);
+  if (state.until) params.set("until", state.until);
   if (state.failedOnly) params.set("failed_only", "true");
   const page = await api(`/api/admin/articles?${params}`);
   renderArticles(page);
@@ -172,7 +179,13 @@ async function loadSchedules() {
 }
 
 async function submitJob(kind) {
-  const job = await api(`/api/admin/jobs/${kind}`, { method: "POST" });
+  const params = new URLSearchParams();
+  if (["discover", "run"].includes(kind)) {
+    if (state.since) params.set("since", state.since);
+    if (state.until) params.set("until", state.until);
+  }
+  const suffix = params.toString() ? `?${params}` : "";
+  const job = await api(`/api/admin/jobs/${kind}${suffix}`, { method: "POST" });
   setStatus(`Job submitted: ${job.job_id}`);
   await pollJob(job.job_id);
 }
@@ -238,6 +251,7 @@ async function previewRsshub() {
           <div class="list-item">
             <b>${escapeHtml(entry.title)}</b><br>
             <a href="${escapeHtml(entry.url)}" target="_blank" rel="noreferrer">${escapeHtml(entry.url)}</a>
+            ${entry.published_at ? `<br><span class="muted">${escapeHtml(entry.published_at)}</span>` : ""}
           </div>`,
       )
       .join("") || '<p class="muted">No entries</p>';
@@ -259,6 +273,7 @@ async function previewSitemap() {
           <div class="list-item">
             <b>${escapeHtml(entry.title)}</b><br>
             <a href="${escapeHtml(entry.url)}" target="_blank" rel="noreferrer">${escapeHtml(entry.url)}</a>
+            ${entry.published_at ? `<br><span class="muted">${escapeHtml(entry.published_at)}</span>` : ""}
           </div>`,
       )
       .join("") || '<p class="muted">No entries</p>';
@@ -288,6 +303,7 @@ async function previewListing() {
           <div class="list-item">
             <b>${escapeHtml(entry.title)}</b><br>
             <a href="${escapeHtml(entry.url)}" target="_blank" rel="noreferrer">${escapeHtml(entry.url)}</a>
+            ${entry.published_at ? `<br><span class="muted">${escapeHtml(entry.published_at)}</span>` : ""}
           </div>`,
       )
       .join("") || '<p class="muted">No entries</p>';
@@ -343,6 +359,8 @@ function bindEvents() {
   $("#search-input").value = state.q;
   $("#status-filter").value = state.status;
   $("#source-filter").value = state.source;
+  $("#discover-since").value = state.since;
+  $("#discover-until").value = state.until;
   $("#failed-only").checked = state.failedOnly;
 
   document.querySelectorAll("[data-job]").forEach((button) => {
@@ -373,6 +391,16 @@ function bindEvents() {
   });
   $("#source-filter").addEventListener("change", (event) => {
     state.source = event.target.value;
+    state.page = 1;
+    loadArticles().catch((error) => setStatus(errorText(error)));
+  });
+  $("#discover-since").addEventListener("change", (event) => {
+    state.since = event.target.value;
+    state.page = 1;
+    loadArticles().catch((error) => setStatus(errorText(error)));
+  });
+  $("#discover-until").addEventListener("change", (event) => {
+    state.until = event.target.value;
     state.page = 1;
     loadArticles().catch((error) => setStatus(errorText(error)));
   });

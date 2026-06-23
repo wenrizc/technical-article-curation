@@ -16,6 +16,7 @@ def _frontmatter(article: sqlite3.Row, tags: list[str]) -> str:
         f"title: {yaml_scalar(article['title'])}\n"
         f"url: {yaml_scalar(article['url'])}\n"
         f"source: {yaml_scalar(article['source_name'])}\n"
+        f"published_at: {yaml_scalar(article['published_at'] or '')}\n"
         f"collected_at: {yaml_scalar(article['collected_at'] or '')}\n"
         "tags:\n"
         f"{tag_lines}\n"
@@ -28,6 +29,7 @@ def _source_block(article: sqlite3.Row, fetched_at: str) -> str:
         "> 来源信息\n"
         f">\n> - 来源：{article['source_name']}\n"
         f"> - 原文：{article['url']}\n"
+        f"> - 原文时间：{article['published_at'] or '未知'}\n"
         f"> - 抓取时间：{fetched_at}\n\n"
     )
 
@@ -42,6 +44,7 @@ def _public_record(
         "url": article["url"],
         "source": article["source_name"],
         "publish_policy": article["source_publish_policy"],
+        "published_at": article["published_at"],
         "collected_at": article["collected_at"],
         "summary": article["summary"],
         "tags": tags,

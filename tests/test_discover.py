@@ -126,6 +126,34 @@ def test_discover_strips_invalid_feed_control_chars(tmp_path, monkeypatch):
     assert article["url"] == "https://example.com/post"
 
 
+def test_discover_records_rss_published_at_and_queues_fetch(tmp_path, monkeypatch):
+    settings = _settings(tmp_path)
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    feed = b"""<?xml version="1.0"?>
+<rss version="2.0"><channel><item>
+  <title>Post</title>
+  <link>https://example.com/post</link>
+  <pubDate>Mon, 01 Jun 2026 10:00:00 GMT</pubDate>
+</item></channel></rss>
+"""
+    session = FakeSession([FakeResponse(content=feed)])
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
+
+    result = discover_candidates(settings, conn)
+    article = conn.execute("SELECT * FROM articles WHERE source_name = 'example'").fetchone()
+    queue = conn.execute(
+        "SELECT * FROM article_queue WHERE article_id = ?", (article["id"],)
+    ).fetchone()
+
+    assert result["queued_fetch"] == 1
+    assert article["published_at"] == "2026-06-01T10:00:00Z"
+    assert queue["stage"] == "fetch"
+    assert queue["status"] == "queued"
+
+
 def test_discover_normalizes_feed_entry_urls(tmp_path, monkeypatch):
     settings = _settings(
         tmp_path,
@@ -351,7 +379,10 @@ sources:
     db.migrate(conn)
     sitemap = b"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://martinfowler.com/articles/refactoring.html</loc></url>
+  <url>
+    <loc>https://martinfowler.com/articles/refactoring.html</loc>
+    <lastmod>2026-05-20</lastmod>
+  </url>
   <url><loc>https://martinfowler.com/articles/microservices.html</loc></url>
 </urlset>
 """
@@ -363,7 +394,7 @@ sources:
     result = discover_candidates(settings, conn)
     state = db.get_source_state(conn, "fowler")
     rows = conn.execute(
-        "SELECT url FROM articles WHERE source_name = 'fowler' ORDER BY url"
+        "SELECT url, published_at FROM articles WHERE source_name = 'fowler' ORDER BY url"
     ).fetchall()
 
     assert result["inserted"] == 2
@@ -372,6 +403,7 @@ sources:
         "https://martinfowler.com/articles/microservices.html",
         "https://martinfowler.com/articles/refactoring.html",
     ]
+    assert rows[1]["published_at"] == "2026-05-20T00:00:00Z"
 
 
 def test_discover_sitemapindex_expands_nested_sitemaps(tmp_path, monkeypatch):

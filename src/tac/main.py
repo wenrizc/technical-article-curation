@@ -51,6 +51,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 conn.close()
         _check_rsshub(settings)
         app.state.job_manager.recover_interrupted_jobs()
+        conn = db.connect(settings.state_db, busy_timeout_ms=settings.db_busy_timeout_ms)
+        try:
+            db.recover_article_queue(conn)
+        finally:
+            conn.close()
         scheduler = SchedulerService(settings, app.state.job_manager)
         app.state.scheduler = scheduler
         scheduler.start()

@@ -22,6 +22,7 @@ def manual_candidates(config: SourcesFile) -> list[CandidateArticle]:
                 title=item.title or item.url,
                 url=item.url,
                 source_name="manual",
+                published_at=item.published_at,
                 source_tags=item.tags,
                 publish_policy="full_content",
             )
@@ -35,6 +36,7 @@ def manual_candidates(config: SourcesFile) -> list[CandidateArticle]:
                     title=item.title or item.url,
                     url=item.url,
                     source_name=source.name,
+                    published_at=item.published_at,
                     source_tags=[*source.tags, *item.tags],
                     publish_policy=source.publish_policy or "full_content",
                 )
