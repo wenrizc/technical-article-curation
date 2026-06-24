@@ -66,6 +66,8 @@ class DiscoveredEntry:
     title: str
     url: str
     published_at: str | None = None
+    source_content_markdown: str | None = None
+    source_content_metadata: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -136,14 +138,69 @@ def _parse_feed_body(source: SourceConfig, content: bytes) -> list[DiscoveredEnt
         url = getattr(entry, "link", None)
         title = getattr(entry, "title", None) or url
         if url:
+            source_content, source_content_metadata = _entry_source_content(entry)
             entries.append(
                 DiscoveredEntry(
                     title=title,
                     url=_normalize_feed_entry_url(source, url),
                     published_at=_entry_published_at(entry),
+                    source_content_markdown=source_content,
+                    source_content_metadata=source_content_metadata,
                 )
             )
     return entries
+
+
+def _entry_source_content(entry: object) -> tuple[str | None, dict[str, object] | None]:
+    """Extract article-like content embedded in RSS/Atom entries."""
+
+    content_items = getattr(entry, "content", None)
+    if isinstance(content_items, list):
+        for item in content_items:
+            value = _entry_field(item, "value")
+            if value:
+                markdown = _html_or_text_to_markdown(value)
+                if markdown:
+                    return markdown, {
+                        "source": "feed_entry",
+                        "field": "content",
+                        "content_type": _entry_field(item, "type"),
+                    }
+    summary = (
+        _entry_field(entry, "summary")
+        or _entry_field(getattr(entry, "summary_detail", None), "value")
+        or _entry_field(entry, "description")
+    )
+    if summary:
+        markdown = _html_or_text_to_markdown(summary)
+        if markdown:
+            return markdown, {"source": "feed_entry", "field": "summary"}
+    return None, None
+
+
+def _entry_field(item: object, field: str) -> str | None:
+    if item is None:
+        return None
+    value = item.get(field) if isinstance(item, dict) else getattr(item, field, None)
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _html_or_text_to_markdown(value: str) -> str | None:
+    """Convert feed embedded HTML or text to plain Markdown-compatible text."""
+
+    text = value.strip()
+    if not text:
+        return None
+    if "<" not in text or ">" not in text:
+        return text
+    soup = BeautifulSoup(text, "lxml")
+    for node in soup(["script", "style"]):
+        node.decompose()
+    markdown = soup.get_text("\n", strip=True)
+    return markdown or None
 
 
 def _strip_invalid_xml_control_chars(content: bytes) -> bytes:
@@ -391,6 +448,8 @@ def _add_candidate_and_queue_fetch(
     published_at: str | None,
     source_tags: list[str],
     source_publish_policy: str,
+    source_content_markdown: str | None,
+    source_content_metadata: dict[str, object] | None,
     time_range: TimeRange,
 ) -> tuple[bool, bool, bool]:
     if published_at and not time_range.contains(published_at):
@@ -403,6 +462,8 @@ def _add_candidate_and_queue_fetch(
         published_at=published_at,
         source_tags=source_tags,
         source_publish_policy=source_publish_policy,
+        source_content_markdown=source_content_markdown,
+        source_content_metadata=source_content_metadata,
     )
     was_queued = False
     if status.value == "candidate" and db.latest_successful_fetch(conn, article_id) is None:
@@ -468,6 +529,8 @@ def discover_candidates(
                     published_at=entry.published_at,
                     source_tags=result.source_tags,
                     source_publish_policy=result.source_publish_policy,
+                    source_content_markdown=entry.source_content_markdown,
+                    source_content_metadata=entry.source_content_metadata,
                     time_range=time_range,
                 )
                 if was_out_of_range:
@@ -492,6 +555,8 @@ def discover_candidates(
             published_at=candidate.published_at,
             source_tags=candidate.source_tags,
             source_publish_policy=candidate.publish_policy,
+            source_content_markdown=None,
+            source_content_metadata=None,
             time_range=time_range,
         )
         if was_out_of_range:

@@ -110,6 +110,97 @@ def test_fetch_pending_records_crawler4ai_failure(tmp_path, monkeypatch):
     assert article["status"] == "candidate"
 
 
+def test_fetch_pending_prefers_feed_entry_content(tmp_path, monkeypatch):
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    article_id, _, _ = db.add_candidate(
+        conn,
+        title="RSSHub Article",
+        url="https://example.com/rsshub/article",
+        source_name="rsshub",
+        source_content_markdown="# RSS Body\n\nFull text from feed.",
+        source_content_metadata={"feed_type": "rsshub"},
+    )
+    settings = Settings(
+        state_db=tmp_path / "state.db",
+        sources_path=tmp_path / "sources.yaml",
+        public_dir=tmp_path / "public",
+        max_retry=3,
+        model="fixture-model",
+        base_url="https://example.invalid/v1",
+        api_key=None,
+        ai_response_path=None,
+        fetch_fixture_path=None,
+        crawler4ai_enabled=False,
+        fetch_delay_seconds=0,
+        evaluation_max_attempts=3,
+        prompt_language="zh-CN",
+        prompt_path=tmp_path / "evaluate.md",
+        few_shot_dir=tmp_path / "few_shots",
+    )
+
+    def unexpected_fetch(*args, **kwargs):
+        raise AssertionError("Crawler4AI should not be called when feed content is available")
+
+    monkeypatch.setattr("tac.application.use_cases.fetch_articles.fetch_url", unexpected_fetch)
+
+    result = fetch_pending(settings, conn)
+    fetch = conn.execute("SELECT * FROM fetches WHERE article_id = ?", (article_id,)).fetchone()
+    evaluate_queue = conn.execute(
+        "SELECT * FROM article_queue WHERE article_id = ? AND stage = 'evaluate'",
+        (article_id,),
+    ).fetchone()
+
+    assert result["succeeded"] == 1
+    assert fetch["content_markdown"] == "# RSS Body\n\nFull text from feed."
+    assert '"crawler": "feed-entry"' in fetch["crawler_metadata"]
+    assert evaluate_queue["status"] == "queued"
+
+
+def test_fetch_pending_falls_back_to_crawler_when_feed_entry_content_too_large(
+    tmp_path, monkeypatch
+):
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    article_id, _, _ = db.add_candidate(
+        conn,
+        title="Large Feed Article",
+        url="https://example.com/large",
+        source_name="rss",
+        source_content_markdown="x" * 20,
+    )
+    settings = Settings(
+        state_db=tmp_path / "state.db",
+        sources_path=tmp_path / "sources.yaml",
+        public_dir=tmp_path / "public",
+        max_retry=3,
+        model="fixture-model",
+        base_url="https://example.invalid/v1",
+        api_key=None,
+        ai_response_path=None,
+        fetch_fixture_path=None,
+        crawler4ai_enabled=True,
+        fetch_delay_seconds=0,
+        evaluation_max_attempts=3,
+        prompt_language="zh-CN",
+        prompt_path=tmp_path / "evaluate.md",
+        few_shot_dir=tmp_path / "few_shots",
+        fetch_max_markdown_bytes=10,
+    )
+
+    def fetch(_url, *, crawler4ai_enabled=True, timeout_seconds=90):
+        return FetchResult(markdown="short", metadata={"crawler": "crawler4ai"})
+
+    monkeypatch.setattr("tac.application.use_cases.fetch_articles.fetch_url", fetch)
+
+    result = fetch_pending(settings, conn)
+    fetch_row = conn.execute("SELECT * FROM fetches WHERE article_id = ?", (article_id,)).fetchone()
+
+    assert result["succeeded"] == 1
+    assert fetch_row["content_markdown"] == "short"
+    assert '"crawler": "crawler4ai"' in fetch_row["crawler_metadata"]
+
+
 def test_fetch_pending_skips_out_of_range_after_page_date_extraction(tmp_path, monkeypatch):
     conn = db.connect(tmp_path / "state.db")
     db.migrate(conn)

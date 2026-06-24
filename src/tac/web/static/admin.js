@@ -144,6 +144,60 @@ async function loadFailures() {
       .join("") || '<p class="muted">No failures</p>';
 }
 
+async function loadTags() {
+  const [tags, candidates] = await Promise.all([
+    api("/api/admin/tags?limit=200"),
+    api("/api/admin/tag-candidates?status=pending&limit=50"),
+  ]);
+  $("#tag-candidates-list").innerHTML =
+    candidates.items
+      .map(
+        (item) => `
+          <div class="list-item">
+            <b>${escapeHtml(item.suggested_tag)}</b> <span class="muted">#${item.id}</span><br>
+            ${escapeHtml(item.article_title)}<br>
+            <span class="muted">${escapeHtml(item.reason || "")}</span><br>
+            <button data-tag-candidate-action="approve" data-id="${item.id}">Approve</button>
+            <button data-tag-candidate-action="reject" data-id="${item.id}">Reject</button>
+          </div>`,
+      )
+      .join("") || '<p class="muted">No pending tag candidates</p>';
+  $("#tags-list").innerHTML =
+    tags.items
+      .map(
+        (tag) => `
+          <div class="list-item">
+            <b>${escapeHtml(tag.name)}</b> <span class="tag ${escapeHtml(tag.status)}">${escapeHtml(tag.status)}</span>
+            <span class="muted">${tag.article_count || 0} articles</span><br>
+            ${escapeHtml(tag.description || "")}<br>
+            <button data-tag-status="${tag.status === "active" ? "disabled" : "active"}" data-id="${tag.id}">
+              ${tag.status === "active" ? "Disable" : "Enable"}
+            </button>
+          </div>`,
+      )
+      .join("") || '<p class="muted">No vocabulary tags</p>';
+}
+
+async function createTag() {
+  const name = $("#tag-name").value.trim();
+  if (!name) {
+    $("#tags-status").textContent = "Tag name is required";
+    return;
+  }
+  await api("/api/admin/tags", {
+    method: "POST",
+    body: JSON.stringify({
+      name,
+      description: $("#tag-description").value.trim(),
+      status: "active",
+    }),
+  });
+  $("#tag-name").value = "";
+  $("#tag-description").value = "";
+  $("#tags-status").textContent = "Tag added";
+  await loadTags();
+}
+
 async function loadJobs() {
   const payload = await api("/api/admin/jobs");
   $("#jobs-list").innerHTML =
@@ -455,6 +509,45 @@ function bindEvents() {
   $("#refresh-failures").addEventListener("click", () => {
     loadFailures().catch((error) => setStatus(errorText(error)));
   });
+  $("#refresh-tags").addEventListener("click", () => {
+    loadTags().catch((error) => {
+      $("#tags-status").textContent = errorText(error);
+    });
+  });
+  $("#create-tag").addEventListener("click", async () => {
+    try {
+      await createTag();
+    } catch (error) {
+      $("#tags-status").textContent = errorText(error);
+    }
+  });
+  $("#tag-candidates-list").addEventListener("click", async (event) => {
+    const button = event.target.closest("button[data-tag-candidate-action]");
+    if (!button) return;
+    try {
+      await api(`/api/admin/tag-candidates/${button.dataset.id}/${button.dataset.tagCandidateAction}`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      await loadTags();
+      await loadArticles();
+    } catch (error) {
+      $("#tags-status").textContent = errorText(error);
+    }
+  });
+  $("#tags-list").addEventListener("click", async (event) => {
+    const button = event.target.closest("button[data-tag-status]");
+    if (!button) return;
+    try {
+      await api(`/api/admin/tags/${button.dataset.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: button.dataset.tagStatus }),
+      });
+      await loadTags();
+    } catch (error) {
+      $("#tags-status").textContent = errorText(error);
+    }
+  });
   $("#save-sources").addEventListener("click", async () => {
     try {
       await saveSources();
@@ -501,7 +594,7 @@ function bindEvents() {
 async function boot() {
   bindEvents();
   await loadSourceNames();
-  await Promise.all([loadSummary(), loadArticles(), loadFailures(), loadJobs(), loadSchedules(), loadSources()]);
+  await Promise.all([loadSummary(), loadArticles(), loadFailures(), loadTags(), loadJobs(), loadSchedules(), loadSources()]);
   setStatus("Ready");
 }
 

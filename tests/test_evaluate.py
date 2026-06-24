@@ -34,11 +34,13 @@ def test_evaluate_with_ai_uses_openai_sdk(monkeypatch, tmp_path):
     class FakeMessage:
         content = """{
           "decision": "accept",
+          "content_type": "engineering_case",
           "dimensions": {
-            "工程价值": "high",
-            "技术深度": "high",
+            "领域相关性": "high",
+            "长期价值": "high",
+            "内容深度": "high",
             "原创性": "medium",
-            "可复用性": "high",
+            "可迁移性": "high",
             "可读性": "high"
           },
           "summary": "summary",
@@ -72,6 +74,8 @@ def test_evaluate_with_ai_uses_openai_sdk(monkeypatch, tmp_path):
         settings,
         title="Title",
         url="https://example.com",
+        source_name="Source",
+        source_tags=["Engineering"],
         content_markdown="# Body",
     )
 
@@ -82,6 +86,8 @@ def test_evaluate_with_ai_uses_openai_sdk(monkeypatch, tmp_path):
     assert calls["create"]["model"] == "openai/test-model"
     assert calls["create"]["response_format"] == {"type": "json_object"}
     assert calls["create"]["timeout"] == settings.ai_timeout_seconds
+    assert "# Source Name\nSource" in calls["create"]["messages"][1]["content"]
+    assert '# Source Tags\n["Engineering"]' in calls["create"]["messages"][1]["content"]
 
 
 def test_evaluate_with_ai_retries_invalid_json_with_repair_prompt(monkeypatch, tmp_path):
@@ -114,11 +120,13 @@ def test_evaluate_with_ai_retries_invalid_json_with_repair_prompt(monkeypatch, t
             "not json",
             """{
               "decision": "accept",
+              "content_type": "engineering_case",
               "dimensions": {
-                "工程价值": "high",
-                "技术深度": "high",
+                "领域相关性": "high",
+                "长期价值": "high",
+                "内容深度": "high",
                 "原创性": "medium",
-                "可复用性": "high",
+                "可迁移性": "high",
                 "可读性": "high"
               },
               "summary": "summary",
@@ -159,6 +167,8 @@ def test_evaluate_with_ai_retries_invalid_json_with_repair_prompt(monkeypatch, t
         settings,
         title="Title",
         url="https://example.com",
+        source_name="Source",
+        source_tags=["Engineering"],
         content_markdown="# Body",
     )
 
@@ -196,11 +206,13 @@ def test_evaluate_with_ai_repeats_original_request_after_api_failure(monkeypatch
     class FakeMessage:
         content = """{
           "decision": "reject",
+          "content_type": "technical_article",
           "dimensions": {
-            "工程价值": "low",
-            "技术深度": "low",
+            "领域相关性": "medium",
+            "长期价值": "low",
+            "内容深度": "low",
             "原创性": "low",
-            "可复用性": "low",
+            "可迁移性": "low",
             "可读性": "medium"
           },
           "summary": "summary",
@@ -235,6 +247,8 @@ def test_evaluate_with_ai_repeats_original_request_after_api_failure(monkeypatch
         settings,
         title="Title",
         url="https://example.com",
+        source_name="Source",
+        source_tags=["News"],
         content_markdown="# Body",
     )
 
@@ -250,11 +264,13 @@ def test_evaluate_pending_uses_configured_concurrency(tmp_path, monkeypatch):
     ai_response.write_text(
         """{
           "decision": "accept",
+          "content_type": "engineering_case",
           "dimensions": {
-            "工程价值": "high",
-            "技术深度": "high",
+            "领域相关性": "high",
+            "长期价值": "high",
+            "内容深度": "high",
             "原创性": "medium",
-            "可复用性": "high",
+            "可迁移性": "high",
             "可读性": "high"
           },
           "summary": "summary",

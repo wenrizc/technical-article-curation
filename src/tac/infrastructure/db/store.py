@@ -5,7 +5,7 @@ import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
-from tac.domain.models import ArticleStatus, EvaluationResult
+from tac.domain.models import ArticleStatus, EvaluationResult, TagCandidateStatus, TagStatus
 from tac.shared.dates import parse_datetime
 from tac.shared.utils import normalize_url, source_title_slug, utc_now_iso
 
@@ -18,6 +18,15 @@ def connect(db_path: Path, *, busy_timeout_ms: int = 5000) -> sqlite3.Connection
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute(f"PRAGMA busy_timeout = {busy_timeout_ms}")
     return conn
+
+
+def normalize_tag_name(value: str) -> str:
+    return " ".join(value.strip().lower().split())
+
+
+def tag_slug(value: str) -> str:
+    normalized = normalize_tag_name(value)
+    return normalized.replace(" ", "-")
 
 
 def migrate(conn: sqlite3.Connection, migrations_dir: Path = Path("migrations")) -> list[str]:
@@ -39,7 +48,19 @@ def migrate(conn: sqlite3.Connection, migrations_dir: Path = Path("migrations"))
         if exists:
             continue
         sql = path.read_text(encoding="utf-8")
-        conn.executescript(sql)
+        try:
+            conn.executescript(sql)
+        except sqlite3.OperationalError as exc:
+            if (
+                version == "010_feed_entry_content"
+                and "duplicate column name" in str(exc).lower()
+                and _has_columns(
+                    conn, "articles", {"source_content_markdown", "source_content_metadata"}
+                )
+            ):
+                pass
+            else:
+                raise
         conn.execute(
             "INSERT INTO schema_migrations(version, applied_at) VALUES (?, ?)",
             (version, utc_now_iso()),
@@ -47,6 +68,11 @@ def migrate(conn: sqlite3.Connection, migrations_dir: Path = Path("migrations"))
         applied.append(version)
     conn.commit()
     return applied
+
+
+def _has_columns(conn: sqlite3.Connection, table: str, columns: set[str]) -> bool:
+    existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    return columns.issubset(existing)
 
 
 def create_job_run(
@@ -325,16 +351,37 @@ def add_candidate(
     published_at: str | None = None,
     source_tags: Iterable[str] = (),
     source_publish_policy: str = "full_content",
+    source_content_markdown: str | None = None,
+    source_content_metadata: dict[str, object] | None = None,
 ) -> tuple[int, ArticleStatus, bool]:
     normalized_url = normalize_url(url)
     now = utc_now_iso()
     parsed_published_at = parse_datetime(published_at)
+    cleaned_source_content = (
+        source_content_markdown.strip() if source_content_markdown is not None else None
+    )
+    if cleaned_source_content == "":
+        cleaned_source_content = None
+    source_content_metadata_json = json.dumps(source_content_metadata or {}, ensure_ascii=False)
     existing = find_existing(conn, normalized_url)
     if existing:
+        updates: list[str] = []
+        params: list[object] = []
         if parsed_published_at and not existing["published_at"]:
+            updates.append("published_at = ?")
+            params.append(parsed_published_at)
+        if cleaned_source_content and not _row_value(existing, "source_content_markdown"):
+            updates.append("source_content_markdown = ?")
+            params.append(cleaned_source_content)
+            updates.append("source_content_metadata = ?")
+            params.append(source_content_metadata_json)
+        if updates:
+            updates.append("updated_at = ?")
+            params.append(now)
+            params.append(existing["id"])
             conn.execute(
-                "UPDATE articles SET published_at = ?, updated_at = ? WHERE id = ?",
-                (parsed_published_at, now, existing["id"]),
+                f"UPDATE articles SET {', '.join(updates)} WHERE id = ?",
+                params,
             )
             conn.commit()
         return int(existing["id"]), ArticleStatus(existing["status"]), False
@@ -349,9 +396,9 @@ def add_candidate(
         INSERT INTO articles(
             source_name, title, url, normalized_url, slug,
             status, retry_count, published_at, created_at, updated_at, source_tags,
-            source_publish_policy
+            source_publish_policy, source_content_markdown, source_content_metadata
         )
-        VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             source_name,
@@ -365,10 +412,19 @@ def add_candidate(
             now,
             json.dumps(list(source_tags), ensure_ascii=False),
             source_publish_policy,
+            cleaned_source_content,
+            source_content_metadata_json,
         ),
     )
     conn.commit()
     return int(cur.lastrowid), status, True
+
+
+def _row_value(row: sqlite3.Row, key: str) -> object | None:
+    try:
+        return row[key]
+    except (IndexError, KeyError):
+        return None
 
 
 def articles_ready_for_fetch(conn: sqlite3.Connection, max_retry: int) -> list[sqlite3.Row]:
@@ -498,18 +554,19 @@ def record_evaluation(
 ) -> None:
     now = utc_now_iso()
     article = get_article(conn, article_id)
-    conn.execute(
+    cur = conn.execute(
         """
         INSERT INTO evaluations(
-            article_id, evaluated_at, decision, dimensions, summary,
+            article_id, evaluated_at, decision, content_type, dimensions, summary,
             tags, recommendation_reason, full_reasoning, model_name, raw_json
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             article_id,
             now,
             result.decision.value,
+            result.content_type.value,
             result.dimensions.model_dump_json(by_alias=True),
             result.summary,
             json.dumps(result.tags, ensure_ascii=False),
@@ -519,6 +576,8 @@ def record_evaluation(
             raw_json,
         ),
     )
+    evaluation_id = int(cur.lastrowid)
+    _sync_evaluation_tags(conn, article_id, evaluation_id, result.tags, now)
     if article:
         if result.decision.value == "accept":
             status = ArticleStatus.accepted.value
@@ -540,6 +599,61 @@ def record_evaluation(
     conn.commit()
 
 
+def _sync_evaluation_tags(
+    conn: sqlite3.Connection,
+    article_id: int,
+    evaluation_id: int,
+    tags: Iterable[str],
+    now: str,
+) -> None:
+    conn.execute("DELETE FROM article_tags WHERE article_id = ?", (article_id,))
+    cleaned = []
+    seen: set[str] = set()
+    for tag in tags:
+        name = str(tag).strip()
+        normalized = normalize_tag_name(name)
+        if not name or not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        cleaned.append((name, normalized))
+    for name, normalized in cleaned:
+        vocab = conn.execute(
+            """
+            SELECT id FROM tag_vocabulary
+            WHERE normalized_name = ? AND status = ?
+            """,
+            (normalized, TagStatus.active.value),
+        ).fetchone()
+        if vocab:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO article_tags(article_id, tag_id, evaluation_id, created_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (article_id, int(vocab["id"]), evaluation_id, now),
+            )
+            continue
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO tag_candidates(
+                article_id, evaluation_id, suggested_tag, normalized_name, status,
+                reason, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                article_id,
+                evaluation_id,
+                name,
+                normalized,
+                TagCandidateStatus.pending.value,
+                "AI 评估输出了词库外新标签",
+                now,
+                now,
+            ),
+        )
+
+
 def accepted_articles_for_publish(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     return conn.execute(
         """
@@ -548,7 +662,18 @@ def accepted_articles_for_publish(conn: sqlite3.Connection) -> list[sqlite3.Row]
             f.content_markdown,
             f.fetched_at,
             e.summary,
-            e.tags,
+            e.content_type,
+            COALESCE((
+                SELECT json_group_array(name)
+                FROM (
+                    SELECT tv.name AS name
+                    FROM article_tags at
+                    JOIN tag_vocabulary tv ON tv.id = at.tag_id
+                    WHERE at.article_id = a.id
+                      AND tv.status = 'active'
+                    ORDER BY tv.name COLLATE NOCASE
+                )
+            ), '[]') AS tags,
             e.recommendation_reason,
             e.dimensions
         FROM articles a

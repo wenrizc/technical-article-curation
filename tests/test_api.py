@@ -59,11 +59,13 @@ def _accepted_result() -> EvaluationResult:
     return EvaluationResult.model_validate(
         {
             "decision": "accept",
+            "content_type": "engineering_case",
             "dimensions": {
-                "工程价值": "high",
-                "技术深度": "high",
+                "领域相关性": "high",
+                "长期价值": "high",
+                "内容深度": "high",
                 "原创性": "medium",
-                "可复用性": "high",
+                "可迁移性": "high",
                 "可读性": "high",
             },
             "summary": "摘要",
@@ -340,6 +342,7 @@ def test_public_api_hides_summary_only_markdown(tmp_path):
 
     assert detail["content_markdown"] is None
     assert detail["source_publish_policy"] == "summary_only"
+    assert detail["content_type"] == "engineering_case"
 
 
 def test_public_index_json_returns_all_accepted_articles(tmp_path):
@@ -383,11 +386,12 @@ def test_public_rss_feed_outputs_accepted_articles(tmp_path):
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("application/rss+xml")
     parsed = feedparser.parse(response.content)
-    assert parsed.feed.title == "技术文章精选"
+    assert parsed.feed.title == "技术与成长精选"
     assert [entry.title for entry in parsed.entries] == ["Accepted"]
     assert parsed.entries[0].link.startswith("https://curation.example/api/public/articles/")
     assert parsed.entries[0].source.title == "manual"
     assert parsed.entries[0].source.href == "https://example.com/a"
+    assert any(tag["term"] == "工程实践" for tag in parsed.entries[0].tags)
 
 
 def test_public_rss_feed_limit_and_etag_304(tmp_path):
@@ -550,6 +554,44 @@ def test_retry_fetch_submits_job(tmp_path):
 
     assert response.status_code == 200
     assert response.json()["kind"] == "retry-fetch"
+
+
+def test_admin_tag_vocabulary_create_and_list(tmp_path):
+    settings = _settings(tmp_path)
+    app = create_app(settings)
+
+    with TestClient(app) as client:
+        token = _csrf(client)
+        created = client.post(
+            "/api/admin/tags",
+            headers=_headers(token),
+            json={"name": "Architecture", "description": "架构主题"},
+        )
+        listed = client.get("/api/admin/tags")
+
+    assert created.status_code == 200
+    assert created.json()["name"] == "Architecture"
+    assert listed.json()["items"][0]["description"] == "架构主题"
+
+
+def test_admin_tag_candidate_approval_updates_public_tags(tmp_path):
+    settings = _settings(tmp_path)
+    article_id = _seed_accepted(settings)
+    app = create_app(settings)
+
+    with TestClient(app) as client:
+        token = _csrf(client)
+        candidates = client.get("/api/admin/tag-candidates").json()
+        approved = client.post(
+            f"/api/admin/tag-candidates/{candidates['items'][0]['id']}/approve",
+            headers=_headers(token),
+            json={},
+        )
+        slug = client.get(f"/api/admin/articles/{article_id}").json()["article"]["slug"]
+        public_detail = client.get(f"/api/public/articles/{slug}").json()
+
+    assert approved.status_code == 200
+    assert public_detail["tags"] == ["Architecture"]
 
 
 def test_schedules_api_lists_and_triggers_builtin_run(tmp_path):

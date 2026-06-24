@@ -1,0 +1,19 @@
+{
+  "input_type": "computer_science_learning_path",
+  "output": {
+    "decision": "accept",
+    "content_type": "learning_path",
+    "dimensions": {
+      "领域相关性": "high",
+      "长期价值": "high",
+      "内容深度": "high",
+      "原创性": "medium",
+      "可迁移性": "high",
+      "可读性": "high"
+    },
+    "summary": "文章给出系统方向学习路线，说明课程、经典论文、项目训练和阶段性取舍。",
+    "tags": ["Learning Path", "Computer Systems", "Research"],
+    "recommendation_reason": "路线具体且解释先后顺序和训练目标，适合作为系统方向求学和自学参考。",
+    "full_reasoning": "正文不是简单书单，而是按 OS、网络、数据库、分布式系统组织学习阶段，说明每阶段目标、项目练习、论文选择和常见误区，具有计算机领域成长价值。"
+  }
+}

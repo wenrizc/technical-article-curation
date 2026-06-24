@@ -2,16 +2,18 @@
   "input_type": "insufficient_content",
   "output": {
     "decision": "low_confidence",
+    "content_type": "technical_article",
     "dimensions": {
-      "工程价值": "medium",
-      "技术深度": "medium",
+      "领域相关性": "medium",
+      "长期价值": "medium",
+      "内容深度": "medium",
       "原创性": "medium",
-      "可复用性": "medium",
+      "可迁移性": "medium",
       "可读性": "low"
     },
-    "summary": "文章可能涉及工程实践，但抓取正文不完整，暂不足以稳定判断。",
+    "summary": "文章可能涉及计算机领域内容，但抓取正文不完整，暂不足以稳定判断。",
     "tags": ["Engineering"],
     "recommendation_reason": "暂不公开收录，需要补充正文或人工复核后再判断。",
-    "full_reasoning": "现有内容只显示部分段落或目录，无法确认技术深度、原创性和可复用性。为了避免错误自动发布，应进入低置信度留存。"
+    "full_reasoning": "现有内容只显示部分段落或目录，无法确认领域相关性、内容深度、原创性和可迁移性。为了避免错误自动发布，应进入低置信度留存。"
   }
 }

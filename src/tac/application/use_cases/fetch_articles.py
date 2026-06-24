@@ -246,7 +246,13 @@ def _fetch_article(
     settings: Settings, article: sqlite3.Row
 ) -> tuple[int, FetchResult | None, str | None]:
     try:
-        if settings.fetch_fixture_path:
+        source_result = _fetch_from_source_content(article)
+        if (
+            source_result
+            and _markdown_size(source_result.markdown) <= settings.fetch_max_markdown_bytes
+        ):
+            result = source_result
+        elif settings.fetch_fixture_path:
             result = FetchResult(
                 markdown=settings.fetch_fixture_path.read_text(encoding="utf-8"),
                 metadata={"crawler": "fixture", "url": article["url"]},
@@ -259,7 +265,7 @@ def _fetch_article(
             )
         if not result.markdown.strip():
             raise ValueError("empty markdown")
-        markdown_size = len(result.markdown.encode("utf-8"))
+        markdown_size = _markdown_size(result.markdown)
         if markdown_size > settings.fetch_max_markdown_bytes:
             raise ValueError(
                 f"markdown too large: {markdown_size} > {settings.fetch_max_markdown_bytes}"
@@ -267,6 +273,40 @@ def _fetch_article(
         return int(article["id"]), result, None
     except Exception as exc:
         return int(article["id"]), None, str(exc)
+
+
+def _markdown_size(markdown: str) -> int:
+    return len(markdown.encode("utf-8"))
+
+
+def _fetch_from_source_content(article: sqlite3.Row) -> FetchResult | None:
+    """Use content embedded in RSS/RSSHub entries before falling back to page crawling."""
+
+    markdown = _row_value(article, "source_content_markdown")
+    if not isinstance(markdown, str) or not markdown.strip():
+        return None
+    metadata_value = _row_value(article, "source_content_metadata")
+    metadata: dict[str, object] = {}
+    if isinstance(metadata_value, str) and metadata_value.strip():
+        try:
+            parsed = json.loads(metadata_value)
+        except json.JSONDecodeError:
+            parsed = {}
+        if isinstance(parsed, dict):
+            metadata.update(parsed)
+    metadata.update(
+        {
+            "crawler": "feed-entry",
+            "url": article["url"],
+            "fallback_target": "crawler4ai",
+        }
+    )
+    published_at = _row_value(article, "published_at")
+    return FetchResult(
+        markdown=markdown.strip(),
+        metadata=metadata,
+        published_at=published_at if isinstance(published_at, str) else None,
+    )
 
 
 def fetch_pending(

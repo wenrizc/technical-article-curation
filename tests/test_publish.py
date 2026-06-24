@@ -31,11 +31,13 @@ def _accepted_result() -> EvaluationResult:
     return EvaluationResult.model_validate(
         {
             "decision": "accept",
+            "content_type": "engineering_case",
             "dimensions": {
-                "工程价值": "high",
-                "技术深度": "high",
+                "领域相关性": "high",
+                "长期价值": "high",
+                "内容深度": "high",
                 "原创性": "medium",
-                "可复用性": "high",
+                "可迁移性": "high",
                 "可读性": "high",
             },
             "summary": "摘要",
@@ -93,4 +95,5 @@ def test_publish_summary_only_skips_markdown_body(tmp_path):
     assert not md_path.exists()
     assert json_path.exists()
     assert record["publish_policy"] == "summary_only"
+    assert record["content_type"] == "engineering_case"
     assert "markdown_path" not in record

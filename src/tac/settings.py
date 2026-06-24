@@ -52,8 +52,8 @@ class Settings:
     discovery_listing_enabled: bool = True
     listing_timeout_seconds: float = 30
     public_base_url: str = "http://127.0.0.1:1104"
-    public_feed_title: str = "技术文章精选"
-    public_feed_description: str = "AI 辅助精选的高质量技术文章"
+    public_feed_title: str = "技术与成长精选"
+    public_feed_description: str = "AI 辅助精选的计算机领域技术、科研与成长内容"
     public_feed_language: str = "zh-CN"
     public_feed_ttl_minutes: int = 5
 
@@ -165,9 +165,9 @@ def get_settings() -> Settings:
         discovery_listing_enabled=_bool_from_env("TAC_DISCOVERY_LISTING_ENABLED", True),
         listing_timeout_seconds=_float_from_env("TAC_LISTING_TIMEOUT_SECONDS", 30, minimum=1),
         public_base_url=os.environ.get("TAC_PUBLIC_BASE_URL", "http://127.0.0.1:1104").strip(),
-        public_feed_title=os.environ.get("TAC_PUBLIC_FEED_TITLE", "技术文章精选").strip(),
+        public_feed_title=os.environ.get("TAC_PUBLIC_FEED_TITLE", "技术与成长精选").strip(),
         public_feed_description=os.environ.get(
-            "TAC_PUBLIC_FEED_DESCRIPTION", "AI 辅助精选的高质量技术文章"
+            "TAC_PUBLIC_FEED_DESCRIPTION", "AI 辅助精选的计算机领域技术、科研与成长内容"
         ).strip(),
         public_feed_language=os.environ.get("TAC_PUBLIC_FEED_LANGUAGE", "zh-CN").strip(),
         public_feed_ttl_minutes=_int_from_env("TAC_PUBLIC_FEED_TTL_MINUTES", 5, minimum=1),

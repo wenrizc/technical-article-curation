@@ -16,6 +16,7 @@ def _frontmatter(article: sqlite3.Row, tags: list[str]) -> str:
         f"title: {yaml_scalar(article['title'])}\n"
         f"url: {yaml_scalar(article['url'])}\n"
         f"source: {yaml_scalar(article['source_name'])}\n"
+        f"content_type: {yaml_scalar(article['content_type'])}\n"
         f"published_at: {yaml_scalar(article['published_at'] or '')}\n"
         f"collected_at: {yaml_scalar(article['collected_at'] or '')}\n"
         "tags:\n"
@@ -46,6 +47,7 @@ def _public_record(
         "publish_policy": article["source_publish_policy"],
         "published_at": article["published_at"],
         "collected_at": article["collected_at"],
+        "content_type": article["content_type"],
         "summary": article["summary"],
         "tags": tags,
         "recommendation_reason": article["recommendation_reason"],

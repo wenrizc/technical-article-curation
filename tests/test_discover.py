@@ -337,6 +337,30 @@ sources:
     assert article["source_publish_policy"] == "summary_only"
 
 
+def test_discover_records_feed_entry_content_for_fetch_priority(tmp_path, monkeypatch):
+    settings = _settings(tmp_path)
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    feed = b"""<?xml version="1.0"?>
+<rss version="2.0"><channel><item>
+  <title>Post</title>
+  <link>https://example.com/post</link>
+  <description><![CDATA[<article><h1>Post</h1><p>RSSHub full text body</p></article>]]></description>
+</item></channel></rss>
+"""
+    session = FakeSession([FakeResponse(content=feed)])
+    monkeypatch.setattr(
+        "tac.application.use_cases.discover_articles.build_session", lambda: session
+    )
+
+    result = discover_candidates(settings, conn)
+    article = conn.execute("SELECT * FROM articles WHERE source_name = 'example'").fetchone()
+
+    assert result["inserted"] == 1
+    assert "RSSHub full text body" in article["source_content_markdown"]
+    assert '"field": "summary"' in article["source_content_metadata"]
+
+
 def test_discover_records_rsshub_disabled_as_source_failure(tmp_path, monkeypatch):
     settings = _settings(
         tmp_path,

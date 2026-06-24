@@ -10,6 +10,7 @@ from tac.application import pipeline
 from tac.application.jobs import JobConflict, JobManager, JobNotFound, JobQueueFull
 from tac.application.scheduler import SchedulerService
 from tac.application.use_cases import manage_articles as articles
+from tac.application.use_cases import manage_tags as tags
 from tac.application.use_cases.discover_articles import (
     _parse_feed_body,
     build_rsshub_feed_url,
@@ -22,7 +23,7 @@ from tac.application.use_cases.manage_sources import (
     read_sources_yaml,
     save_sources_yaml,
 )
-from tac.domain.models import ArticleStatus, FeedConfig, SourceConfig
+from tac.domain.models import ArticleStatus, FeedConfig, SourceConfig, TagStatus
 from tac.infrastructure.db import store as db
 from tac.web.deps import db_conn, job_manager_from_request, settings_from_request
 
@@ -36,6 +37,23 @@ class StatusUpdate(BaseModel):
 class SourcesUpdate(BaseModel):
     content: str
     previous_hash: str
+
+
+class TagCreate(BaseModel):
+    name: str
+    description: str = ""
+    status: TagStatus = TagStatus.active
+
+
+class TagUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    status: TagStatus | None = None
+
+
+class TagCandidateApprove(BaseModel):
+    tag_id: int | None = None
+    name: str | None = None
 
 
 class RssHubPreviewRequest(BaseModel):
@@ -151,6 +169,99 @@ def set_status(
     conn: Annotated[sqlite3.Connection, Depends(db_conn)],
 ) -> dict[str, object]:
     return _row_or_404(articles.set_article_status(conn, article_id, payload.status))
+
+
+@router.get("/tags")
+def list_tags(
+    conn: Annotated[sqlite3.Connection, Depends(db_conn)],
+    status: str | None = None,
+    q: str | None = None,
+    limit: int = Query(200, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+) -> dict[str, object]:
+    return tags.list_tags(conn, status=status, q=q, limit=limit, offset=offset)
+
+
+@router.post("/tags")
+def create_tag(
+    payload: TagCreate,
+    conn: Annotated[sqlite3.Connection, Depends(db_conn)],
+) -> dict[str, object]:
+    try:
+        return tags.create_tag(
+            conn,
+            name=payload.name,
+            description=payload.description,
+            status=payload.status,
+        )
+    except sqlite3.IntegrityError as exc:
+        raise HTTPException(status_code=409, detail="tag already exists") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.patch("/tags/{tag_id}")
+def update_tag(
+    tag_id: int,
+    payload: TagUpdate,
+    conn: Annotated[sqlite3.Connection, Depends(db_conn)],
+) -> dict[str, object]:
+    try:
+        row = tags.update_tag(
+            conn,
+            tag_id,
+            name=payload.name,
+            description=payload.description,
+            status=payload.status,
+        )
+    except sqlite3.IntegrityError as exc:
+        raise HTTPException(status_code=409, detail="tag already exists") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if row is None:
+        raise HTTPException(status_code=404, detail="tag not found")
+    return row
+
+
+@router.get("/tag-candidates")
+def list_tag_candidates(
+    conn: Annotated[sqlite3.Connection, Depends(db_conn)],
+    status: str | None = "pending",
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+) -> dict[str, object]:
+    return tags.list_tag_candidates(conn, status=status, limit=limit, offset=offset)
+
+
+@router.post("/tag-candidates/{candidate_id}/approve")
+def approve_tag_candidate(
+    candidate_id: int,
+    payload: TagCandidateApprove,
+    conn: Annotated[sqlite3.Connection, Depends(db_conn)],
+) -> dict[str, object]:
+    try:
+        row = tags.approve_candidate(
+            conn,
+            candidate_id,
+            tag_id=payload.tag_id,
+            name=payload.name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if row is None:
+        raise HTTPException(status_code=404, detail="tag candidate not found")
+    return row
+
+
+@router.post("/tag-candidates/{candidate_id}/reject")
+def reject_tag_candidate(
+    candidate_id: int,
+    conn: Annotated[sqlite3.Connection, Depends(db_conn)],
+) -> dict[str, object]:
+    row = tags.reject_candidate(conn, candidate_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="tag candidate not found")
+    return row
 
 
 @router.post("/articles/{article_id}/retry-fetch")

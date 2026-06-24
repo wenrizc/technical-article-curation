@@ -12,6 +12,17 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 from tac.application.use_cases import manage_articles as articles
 from tac.settings import Settings
 
+CONTENT_TYPE_LABELS = {
+    "technical_article": "技术文章",
+    "engineering_case": "工程实践",
+    "research_article": "科研议题",
+    "research_reflection": "科研思考",
+    "learning_path": "学习路线",
+    "personal_reflection": "个人心得",
+    "career_experience": "职业经验",
+    "tooling_note": "工具笔记",
+}
+
 
 @dataclass(frozen=True)
 class PublicFeed:
@@ -61,6 +72,13 @@ def _description(item: dict[str, object]) -> str:
     return "\n\n".join(part for part in parts if part)
 
 
+def _content_type_label(item: dict[str, object]) -> str | None:
+    content_type = item.get("content_type")
+    if not isinstance(content_type, str):
+        return None
+    return CONTENT_TYPE_LABELS.get(content_type)
+
+
 def _generate_with_feedgen(
     settings: Settings, items: list[dict[str, object]], last_build: datetime | None
 ) -> bytes | None:
@@ -89,6 +107,8 @@ def _generate_with_feedgen(
         published = _item_time(item)
         if published is not None:
             entry.pubDate(published)
+        if label := _content_type_label(item):
+            entry.category({"term": label})
         for tag in item.get("tags") or []:
             entry.category({"term": str(tag)})
     return bytes(fg.rss_str(pretty=True))
@@ -124,6 +144,8 @@ def _generate_with_stdlib(
         published = _item_time(item)
         if published is not None:
             _text(entry, "pubDate", format_datetime(published, usegmt=True))
+        if label := _content_type_label(item):
+            _text(entry, "category", label)
         for tag in item.get("tags") or []:
             _text(entry, "category", tag)
     return b'<?xml version="1.0" encoding="UTF-8"?>\n' + tostring(

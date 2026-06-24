@@ -20,6 +20,20 @@ SORT_COLUMNS: dict[str, str] = {
     "retry_count": "a.retry_count",
 }
 
+PUBLIC_TAGS_SQL = """
+            COALESCE((
+                SELECT json_group_array(name)
+                FROM (
+                    SELECT tv.name AS name
+                    FROM article_tags at
+                    JOIN tag_vocabulary tv ON tv.id = at.tag_id
+                    WHERE at.article_id = a.id
+                      AND tv.status = 'active'
+                    ORDER BY tv.name COLLATE NOCASE
+                )
+            ), '[]')
+"""
+
 
 @dataclass(frozen=True)
 class Page:
@@ -71,6 +85,8 @@ def article_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
         result["dimensions"] = json.loads(result["dimensions"])
     if "crawler_metadata" in result and isinstance(result["crawler_metadata"], str):
         result["crawler_metadata"] = json.loads(result["crawler_metadata"] or "{}")
+    if "source_content_metadata" in result and isinstance(result["source_content_metadata"], str):
+        result["source_content_metadata"] = json.loads(result["source_content_metadata"] or "{}")
     return result
 
 
@@ -258,12 +274,14 @@ def list_public_articles(
                 ORDER BY e.id DESC
                 LIMIT 1
             ) AS summary,
+{PUBLIC_TAGS_SQL}
+            AS tags,
             (
-                SELECT e.tags FROM evaluations e
+                SELECT e.content_type FROM evaluations e
                 WHERE e.article_id = a.id
                 ORDER BY e.id DESC
                 LIMIT 1
-            ) AS tags,
+            ) AS content_type,
             (
                 SELECT e.recommendation_reason FROM evaluations e
                 WHERE e.article_id = a.id
@@ -318,12 +336,14 @@ def list_all_public_articles(
                 ORDER BY e.id DESC
                 LIMIT 1
             ) AS summary,
+{PUBLIC_TAGS_SQL}
+            AS tags,
             (
-                SELECT e.tags FROM evaluations e
+                SELECT e.content_type FROM evaluations e
                 WHERE e.article_id = a.id
                 ORDER BY e.id DESC
                 LIMIT 1
-            ) AS tags,
+            ) AS content_type,
             (
                 SELECT e.recommendation_reason FROM evaluations e
                 WHERE e.article_id = a.id
@@ -396,13 +416,15 @@ def get_article_detail(conn: sqlite3.Connection, article_id: int) -> dict[str, o
 
 def get_public_article_detail(conn: sqlite3.Connection, slug: str) -> dict[str, object] | None:
     article = conn.execute(
-        """
+        f"""
         SELECT
             a.*,
             f.content_markdown,
             f.fetched_at,
             e.summary,
-            e.tags,
+            e.content_type,
+{PUBLIC_TAGS_SQL}
+            AS tags,
             e.recommendation_reason,
             e.dimensions
         FROM articles a
@@ -424,6 +446,8 @@ def get_public_article_detail(conn: sqlite3.Connection, slug: str) -> dict[str, 
     if not article:
         return None
     result = article_row_to_dict(article)
+    result.pop("source_content_markdown", None)
+    result.pop("source_content_metadata", None)
     if result.get("source_publish_policy") == "summary_only":
         result["content_markdown"] = None
     return result

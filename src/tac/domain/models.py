@@ -14,6 +14,17 @@ class ArticleStatus(str, Enum):
     low_confidence = "low_confidence"
 
 
+class TagStatus(str, Enum):
+    active = "active"
+    disabled = "disabled"
+
+
+class TagCandidateStatus(str, Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+
 class Decision(str, Enum):
     accept = "accept"
     reject = "reject"
@@ -26,18 +37,31 @@ class Level(str, Enum):
     low = "low"
 
 
+class ContentType(str, Enum):
+    technical_article = "technical_article"
+    engineering_case = "engineering_case"
+    research_article = "research_article"
+    research_reflection = "research_reflection"
+    learning_path = "learning_path"
+    personal_reflection = "personal_reflection"
+    career_experience = "career_experience"
+    tooling_note = "tooling_note"
+
+
 class Dimensions(BaseModel):
-    engineering_value: Level = Field(alias="工程价值")
-    technical_depth: Level = Field(alias="技术深度")
+    domain_relevance: Level = Field(alias="领域相关性")
+    long_term_value: Level = Field(alias="长期价值")
+    content_depth: Level = Field(alias="内容深度")
     originality: Level = Field(alias="原创性")
-    reusability: Level = Field(alias="可复用性")
+    transferability: Level = Field(alias="可迁移性")
     readability: Level = Field(alias="可读性")
 
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "extra": "forbid"}
 
 
 class EvaluationResult(BaseModel):
     decision: Decision
+    content_type: ContentType
     dimensions: Dimensions
     summary: str
     tags: list[str]

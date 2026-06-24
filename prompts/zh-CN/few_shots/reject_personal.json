@@ -1,0 +1,19 @@
+{
+  "input_type": "generic_personal_motivation",
+  "output": {
+    "decision": "reject",
+    "content_type": "personal_reflection",
+    "dimensions": {
+      "领域相关性": "low",
+      "长期价值": "low",
+      "内容深度": "low",
+      "原创性": "low",
+      "可迁移性": "low",
+      "可读性": "medium"
+    },
+    "summary": "文章主要是泛泛的坚持和焦虑表达，缺少计算机领域上下文和具体方法。",
+    "tags": ["Personal"],
+    "recommendation_reason": "不收录，内容没有形成可验证、可迁移的技术、科研或学习参考。",
+    "full_reasoning": "正文没有具体计算机学习路线、工程问题、科研方法、职业约束或案例证据，只是通用情绪表达和励志话术，不符合精选库边界。"
+  }
+}

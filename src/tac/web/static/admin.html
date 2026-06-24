@@ -88,6 +88,27 @@
 
       <section class="panel">
         <div class="panel-heading">
+          <h2>Tag Vocabulary</h2>
+          <button id="refresh-tags">Refresh</button>
+        </div>
+        <div class="rsshub-form">
+          <label>
+            Tag
+            <input id="tag-name" type="text" placeholder="Architecture" />
+          </label>
+          <label>
+            Description
+            <input id="tag-description" type="text" placeholder="Optional note" />
+          </label>
+          <button id="create-tag" class="primary">Add Tag</button>
+        </div>
+        <p id="tags-status" class="muted"></p>
+        <div id="tag-candidates-list" class="list"></div>
+        <div id="tags-list" class="list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
           <h2>Recent Jobs</h2>
           <button id="refresh-jobs">Refresh</button>
         </div>

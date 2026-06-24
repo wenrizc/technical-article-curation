@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from tac.application.use_cases import manage_articles as articles
+from tac.application.use_cases import manage_tags as tags
 from tac.domain.models import ArticleStatus, EvaluationResult
 from tac.infrastructure.db import store as db
 
@@ -15,11 +16,13 @@ def _accepted_result() -> EvaluationResult:
     return EvaluationResult.model_validate(
         {
             "decision": "accept",
+            "content_type": "engineering_case",
             "dimensions": {
-                "工程价值": "high",
-                "技术深度": "high",
+                "领域相关性": "high",
+                "长期价值": "high",
+                "内容深度": "high",
                 "原创性": "medium",
-                "可复用性": "high",
+                "可迁移性": "high",
                 "可读性": "high",
             },
             "summary": "摘要",
@@ -151,6 +154,54 @@ def test_public_queries_only_include_accepted(tmp_path):
     assert articles.list_public_articles(conn).total == 0
 
 
+def test_evaluation_routes_unknown_tags_to_candidates(tmp_path):
+    conn = _connect(tmp_path)
+    article_id, _, _ = db.add_candidate(
+        conn, title="A", url="https://example.com/a", source_name="s"
+    )
+    db.record_fetch_success(conn, article_id, "# Body", {"crawler": "fixture"})
+
+    db.record_evaluation(conn, article_id, _accepted_result(), "fixture-model", "{}")
+
+    public_article = articles.list_public_articles(conn).items[0]
+    candidates = tags.list_tag_candidates(conn)
+
+    assert public_article["tags"] == []
+    assert candidates["total"] == 1
+    assert candidates["items"][0]["suggested_tag"] == "Architecture"
+
+
+def test_approved_tag_candidate_becomes_public_tag(tmp_path):
+    conn = _connect(tmp_path)
+    article_id, _, _ = db.add_candidate(
+        conn, title="A", url="https://example.com/a", source_name="s"
+    )
+    db.record_fetch_success(conn, article_id, "# Body", {"crawler": "fixture"})
+    db.record_evaluation(conn, article_id, _accepted_result(), "fixture-model", "{}")
+    candidate_id = tags.list_tag_candidates(conn)["items"][0]["id"]
+
+    tags.approve_candidate(conn, candidate_id)
+
+    public_article = articles.list_public_articles(conn).items[0]
+    assert public_article["tags"] == ["Architecture"]
+    assert tags.list_tag_candidates(conn)["total"] == 0
+
+
+def test_active_vocabulary_tag_links_during_evaluation(tmp_path):
+    conn = _connect(tmp_path)
+    tags.create_tag(conn, name="Architecture")
+    article_id, _, _ = db.add_candidate(
+        conn, title="A", url="https://example.com/a", source_name="s"
+    )
+    db.record_fetch_success(conn, article_id, "# Body", {"crawler": "fixture"})
+
+    db.record_evaluation(conn, article_id, _accepted_result(), "fixture-model", "{}")
+
+    public_article = articles.list_public_articles(conn).items[0]
+    assert public_article["tags"] == ["Architecture"]
+    assert tags.list_tag_candidates(conn)["total"] == 0
+
+
 def test_fetch_evaluation_can_rewrite_current_status(tmp_path):
     conn = _connect(tmp_path)
     article_id, _, _ = db.add_candidate(
@@ -239,6 +290,7 @@ def test_destructive_migration_rebuilds_legacy_articles_schema(tmp_path):
             article_id INTEGER NOT NULL,
             evaluated_at TEXT NOT NULL,
             decision TEXT NOT NULL,
+            content_type TEXT NOT NULL,
             dimensions TEXT NOT NULL,
             summary TEXT NOT NULL,
             tags TEXT NOT NULL,
@@ -275,9 +327,20 @@ def test_destructive_migration_rebuilds_legacy_articles_schema(tmp_path):
         Path("migrations/007_rebuild_published_queue.sql").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
+    (migrations_dir / "008_rebuild_tech_growth_schema.sql").write_text(
+        Path("migrations/008_rebuild_tech_growth_schema.sql").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    (migrations_dir / "010_feed_entry_content.sql").write_text(
+        Path("migrations/010_feed_entry_content.sql").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
 
     db.migrate(conn, migrations_dir=migrations_dir)
     columns = [row["name"] for row in conn.execute("PRAGMA table_info(articles)").fetchall()]
+    evaluation_columns = [
+        row["name"] for row in conn.execute("PRAGMA table_info(evaluations)").fetchall()
+    ]
     db.add_candidate(
         conn,
         title="New",
@@ -290,8 +353,10 @@ def test_destructive_migration_rebuilds_legacy_articles_schema(tmp_path):
     assert conn.execute("SELECT COUNT(*) FROM articles").fetchone()[0] == 1
     assert new_article["published_at"] == "2026-06-01T00:00:00Z"
     assert "published_at" in columns
+    assert "source_content_markdown" in columns
     assert "normalized_title" not in columns
     assert "duplicate_of" not in columns
+    assert "content_type" in evaluation_columns
     assert conn.execute("SELECT COUNT(*) FROM source_state").fetchone()[0] == 0
     assert conn.execute("SELECT COUNT(*) FROM article_queue").fetchone()[0] == 0
 

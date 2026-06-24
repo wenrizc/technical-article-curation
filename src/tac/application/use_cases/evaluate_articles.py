@@ -80,7 +80,13 @@ def build_evaluation_messages(
 
 
 def evaluate_with_ai(
-    settings: Settings, *, title: str, url: str, content_markdown: str
+    settings: Settings,
+    *,
+    title: str,
+    url: str,
+    source_name: str,
+    source_tags: list[str],
+    content_markdown: str,
 ) -> tuple[EvaluationResult, str]:
     if settings.ai_response_path:
         raw = settings.ai_response_path.read_text(encoding="utf-8")
@@ -91,7 +97,13 @@ def evaluate_with_ai(
         raise RuntimeError("OPENAI_API_KEY is required unless TAC_AI_RESPONSE_PATH is set")
 
     prompt = load_prompt(settings)
-    user_content = f"# Title\n{title}\n\n# URL\n{url}\n\n# Markdown\n{content_markdown[:24000]}"
+    user_content = (
+        f"# Title\n{title}\n\n"
+        f"# URL\n{url}\n\n"
+        f"# Source Name\n{source_name}\n\n"
+        f"# Source Tags\n{json.dumps(source_tags, ensure_ascii=False)}\n\n"
+        f"# Markdown\n{content_markdown[:24000]}"
+    )
 
     client = OpenAI(api_key=settings.api_key, base_url=settings.base_url)
     attempts = max(1, settings.evaluation_max_attempts)
@@ -158,6 +170,19 @@ def _row_value(row: sqlite3.Row, key: str) -> object | None:
         return None
 
 
+def _source_tags(row: sqlite3.Row) -> list[str]:
+    value = _row_value(row, "source_tags")
+    if not isinstance(value, str) or not value:
+        return []
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [str(item) for item in parsed if str(item).strip()]
+
+
 def _evaluate_article(
     settings: Settings,
     article: sqlite3.Row,
@@ -168,6 +193,8 @@ def _evaluate_article(
             settings,
             title=article["title"],
             url=article["url"],
+            source_name=article["source_name"],
+            source_tags=_source_tags(article),
             content_markdown=content_markdown,
         )
         return int(article["id"]), result, raw_json, None

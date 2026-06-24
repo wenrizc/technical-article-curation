@@ -2,16 +2,18 @@
   "input_type": "marketing_release_or_shallow_news",
   "output": {
     "decision": "reject",
+    "content_type": "technical_article",
     "dimensions": {
-      "工程价值": "low",
-      "技术深度": "low",
+      "领域相关性": "medium",
+      "长期价值": "low",
+      "内容深度": "low",
       "原创性": "low",
-      "可复用性": "low",
+      "可迁移性": "low",
       "可读性": "medium"
     },
-    "summary": "文章主要介绍产品功能或新闻动态，缺少工程实现和可复用经验。",
+    "summary": "文章主要介绍产品功能或新闻动态，缺少可长期参考的分析和经验。",
     "tags": ["Product"],
-    "recommendation_reason": "不收录，内容偏营销和新闻转述，无法提供长期工程参考价值。",
-    "full_reasoning": "正文没有解释设计约束、实现细节、失败案例或性能数据。即使主题相关，也不满足精选库的技术深度要求。"
+    "recommendation_reason": "不收录，内容偏营销和新闻转述，无法提供长期计算机领域参考价值。",
+    "full_reasoning": "正文没有解释设计约束、实现细节、研究依据、学习路径或可迁移经验。即使主题相关，也不满足精选库的内容深度要求。"
   }
 }
