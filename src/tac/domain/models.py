@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, datetime
 from enum import Enum
 from typing import Any, Literal
 from urllib.parse import urlparse
@@ -106,6 +107,15 @@ class ManualUrl(BaseModel):
     title: str | None = None
     published_at: str | None = None
     tags: list[str] = Field(default_factory=list)
+
+    @field_validator("published_at", mode="before")
+    @classmethod
+    def coerce_published_at(cls, value: Any) -> Any:
+        if isinstance(value, datetime):
+            return value.isoformat().replace("+00:00", "Z")
+        if isinstance(value, date):
+            return value.isoformat()
+        return value
 
 
 class FeedConfig(BaseModel):

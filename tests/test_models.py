@@ -1,10 +1,11 @@
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from tac.domain.models import EvaluationResult, FeedConfig, SourceConfig
+from tac.domain.models import EvaluationResult, FeedConfig, ManualUrl, SourceConfig
 
 VALID = {
     "decision": "accept",
@@ -91,6 +92,17 @@ def test_feed_config_validates_direct_url():
 def test_feed_config_rejects_rsshub_full_url_route():
     with pytest.raises(ValidationError, match="feed.route"):
         FeedConfig.model_validate({"type": "rsshub", "route": "https://rsshub.app/zhihu/hot"})
+
+
+def test_manual_url_accepts_yaml_datetime_published_at():
+    item = ManualUrl.model_validate(
+        {
+            "url": "https://example.com/a",
+            "published_at": datetime(2026, 6, 24, 9, 0, tzinfo=UTC),
+        }
+    )
+
+    assert item.published_at == "2026-06-24T09:00:00Z"
 
 
 def test_rsshub_source_accepts_route():
