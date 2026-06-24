@@ -2,6 +2,7 @@ from concurrent.futures import Future
 
 from tac.application.tag_cache import TagVocabularyCache
 from tac.application.use_cases.evaluate_articles import (
+    EVALUATION_MARKDOWN_CHAR_LIMIT,
     evaluate_pending,
     evaluate_with_ai,
     load_prompt,
@@ -76,13 +77,14 @@ def test_evaluate_with_ai_uses_openai_sdk(monkeypatch, tmp_path):
 
     monkeypatch.setattr("tac.application.use_cases.evaluate_articles.OpenAI", FakeOpenAI)
 
+    body = "x" * (EVALUATION_MARKDOWN_CHAR_LIMIT + 7)
     result, raw_json = evaluate_with_ai(
         settings,
         title="Title",
         url="https://example.com",
         source_name="Source",
         source_tags=["Engineering"],
-        content_markdown="# Body",
+        content_markdown=body,
         tag_names=["Architecture", "Research"],
     )
 
@@ -97,6 +99,12 @@ def test_evaluate_with_ai_uses_openai_sdk(monkeypatch, tmp_path):
     assert '"Architecture"' in calls["create"]["messages"][0]["content"]
     assert "# Source Name\nSource" in calls["create"]["messages"][1]["content"]
     assert '# Source Tags\n["Engineering"]' in calls["create"]["messages"][1]["content"]
+    assert f"# Markdown\n{'x' * EVALUATION_MARKDOWN_CHAR_LIMIT}" in calls["create"][
+        "messages"
+    ][1]["content"]
+    assert f"# Markdown\n{'x' * (EVALUATION_MARKDOWN_CHAR_LIMIT + 1)}" not in calls[
+        "create"
+    ]["messages"][1]["content"]
 
 
 def test_load_prompt_injects_current_tag_vocabulary(tmp_path):

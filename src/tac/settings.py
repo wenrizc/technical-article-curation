@@ -28,7 +28,7 @@ class Settings:
     job_max_concurrency: int = 1
     job_queue_limit: int = 8
     fetch_max_concurrency: int = 1
-    evaluate_max_concurrency: int = 1
+    evaluate_max_concurrency: int = 20
     discover_max_concurrency: int = 2
     discover_since_days: int | None = 1
     discover_since: str | None = None
@@ -143,7 +143,7 @@ def get_settings() -> Settings:
         job_max_concurrency=_int_from_env("TAC_JOB_MAX_CONCURRENCY", 1, minimum=1),
         job_queue_limit=_int_from_env("TAC_JOB_QUEUE_LIMIT", 8, minimum=0),
         fetch_max_concurrency=_int_from_env("TAC_FETCH_MAX_CONCURRENCY", 1, minimum=1),
-        evaluate_max_concurrency=_int_from_env("TAC_EVALUATE_MAX_CONCURRENCY", 1, minimum=1),
+        evaluate_max_concurrency=_int_from_env("TAC_EVALUATE_MAX_CONCURRENCY", 20, minimum=1),
         discover_max_concurrency=_int_from_env("TAC_DISCOVER_MAX_CONCURRENCY", 2, minimum=1),
         discover_since_days=_optional_int_from_env(
             "TAC_DISCOVER_SINCE_DAYS", minimum=1, default=1

@@ -86,7 +86,7 @@ def test_admin_runtime_settings_defaults(monkeypatch):
     assert settings.job_max_concurrency == 1
     assert settings.job_queue_limit == 8
     assert settings.fetch_max_concurrency == 1
-    assert settings.evaluate_max_concurrency == 1
+    assert settings.evaluate_max_concurrency == 20
     assert settings.discover_max_concurrency == 2
     assert settings.discover_since_days == 1
     assert settings.discover_since is None

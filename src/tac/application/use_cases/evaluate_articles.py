@@ -12,6 +12,8 @@ from tac.domain.models import EvaluationResult
 from tac.infrastructure.db import store as db
 from tac.settings import Settings
 
+EVALUATION_MARKDOWN_CHAR_LIMIT = 50_000
+
 
 class EvaluationFailed(RuntimeError):
     def __init__(self, error: str, *, attempts: int, raw_response: str | None) -> None:
@@ -118,7 +120,7 @@ def evaluate_with_ai(
         f"# URL\n{url}\n\n"
         f"# Source Name\n{source_name}\n\n"
         f"# Source Tags\n{json.dumps(source_tags, ensure_ascii=False)}\n\n"
-        f"# Markdown\n{content_markdown[:24000]}"
+        f"# Markdown\n{content_markdown[:EVALUATION_MARKDOWN_CHAR_LIMIT]}"
     )
 
     client = OpenAI(api_key=settings.api_key, base_url=settings.base_url)
