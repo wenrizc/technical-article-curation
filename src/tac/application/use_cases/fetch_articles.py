@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -59,6 +60,26 @@ def _json_ld_dates(soup: BeautifulSoup) -> str | None:
     return None
 
 
+def _embedded_script_dates(html: str) -> str | None:
+    date_keys = (
+        "datePublished",
+        "dateModified",
+        "dateCreated",
+        "publishedOn",
+        "publishedAt",
+    )
+    key_pattern = "|".join(re.escape(key) for key in date_keys)
+    patterns = (
+        rf'"(?:{key_pattern})"\s*:\s*"([^"]+)"',
+        rf'\\"(?:{key_pattern})\\"\s*:\s*\\"([^"\\]+)\\"',
+    )
+    for pattern in patterns:
+        for match in re.finditer(pattern, html):
+            if parsed := parse_datetime(match.group(1)):
+                return parsed
+    return None
+
+
 def extract_published_at_from_html(html: str) -> str | None:
     soup = BeautifulSoup(html, "lxml")
     meta_names = [
@@ -78,6 +99,8 @@ def extract_published_at_from_html(html: str) -> str | None:
         if node and (parsed := parse_datetime(node.get("content"))):
             return parsed
     if parsed := _json_ld_dates(soup):
+        return parsed
+    if parsed := _embedded_script_dates(html):
         return parsed
     for node in soup.find_all("time"):
         if parsed := parse_datetime(node.get("datetime") or node.get_text(strip=True)):

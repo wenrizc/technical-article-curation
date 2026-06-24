@@ -8,6 +8,7 @@ from tac.application.use_cases.evaluate_articles import evaluate_pending
 from tac.application.use_cases.fetch_articles import (
     FetchError,
     FetchResult,
+    extract_published_at_from_html,
     fetch_pending,
     fetch_url,
 )
@@ -18,6 +19,19 @@ from tac.settings import Settings
 def test_fetch_url_fails_when_crawler4ai_disabled():
     with pytest.raises(FetchError, match="disabled"):
         fetch_url("https://example.com/article", crawler4ai_enabled=False)
+
+
+def test_extract_published_at_from_next_embedded_script():
+    html = """
+    <html>
+      <head><title>Article</title></head>
+      <body>
+        <script>self.__next_f.push([1,"{\\"publishedOn\\":\\"2025-06-27T06:05:00.000Z\\"}"])</script>
+      </body>
+    </html>
+    """
+
+    assert extract_published_at_from_html(html) == "2025-06-27T06:05:00Z"
 
 
 def test_fetch_url_falls_back_to_http_strategy_when_browser_missing(monkeypatch):
