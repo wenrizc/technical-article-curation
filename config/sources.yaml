@@ -83,17 +83,6 @@ sources:
   feed:
     type: direct
     url: https://kubernetes.io/feed.xml
-- name: Martin Fowler
-  site_url: https://martinfowler.com/
-  enabled: true
-  display: featured
-  tags:
-  - Architecture
-  - Software Design
-  - Personal Blog
-  feed:
-    type: direct
-    url: https://martinfowler.com/feed.atom
 - name: Julia Evans
   site_url: https://jvns.ca/
   enabled: true
@@ -193,17 +182,6 @@ sources:
   feed:
     type: direct
     url: https://engineering.atspotify.com/feed
-- name: Canva Engineering
-  site_url: https://www.canva.dev/blog/engineering/
-  enabled: true
-  display: default
-  tags:
-  - Engineering
-  - Frontend
-  - Design Tools
-  feed:
-    type: direct
-    url: https://www.canva.dev/blog/engineering/feed.xml
 - name: Grab Tech
   site_url: https://engineering.grab.com/
   enabled: true
@@ -281,17 +259,6 @@ sources:
   feed:
     type: direct
     url: https://fly.io/blog/feed.xml
-- name: Tailscale Blog
-  site_url: https://tailscale.com/blog/
-  enabled: true
-  display: default
-  tags:
-  - Networking
-  - Security
-  - Infrastructure
-  feed:
-    type: direct
-    url: https://tailscale.com/blog/index.xml
 - name: GitHub Security Lab
   site_url: https://github.blog/security/
   enabled: true
@@ -314,39 +281,6 @@ sources:
   feed:
     type: direct
     url: https://blog.trailofbits.com/index.xml
-- name: MDN Blog
-  site_url: https://developer.mozilla.org/en-US/blog/
-  enabled: true
-  display: default
-  tags:
-  - Web
-  - Developer Tools
-  - Mozilla
-  feed:
-    type: direct
-    url: https://developer.mozilla.org/en-US/blog/rss.xml
-- name: Mozilla Hacks
-  site_url: https://hacks.mozilla.org/
-  enabled: true
-  display: default
-  tags:
-  - Web
-  - Browser
-  - Developer Tools
-  feed:
-    type: direct
-    url: https://hacks.mozilla.org/feed/
-- name: WebKit Blog
-  site_url: https://webkit.org/blog/
-  enabled: true
-  display: default
-  tags:
-  - Web
-  - Browser
-  - Performance
-  feed:
-    type: direct
-    url: https://webkit.org/feed/
 - name: V8 Blog
   site_url: https://v8.dev/blog
   enabled: true
@@ -380,28 +314,6 @@ sources:
   feed:
     type: direct
     url: https://simonwillison.net/atom/everything/
-- name: Hillel Wayne
-  site_url: https://www.hillelwayne.com/
-  enabled: true
-  display: default
-  tags:
-  - Formal Methods
-  - Software Design
-  - Personal Blog
-  feed:
-    type: direct
-    url: https://www.hillelwayne.com/post/index.xml
-- name: Brave New Geek
-  site_url: https://bravenewgeek.com/
-  enabled: true
-  display: default
-  tags:
-  - Distributed Systems
-  - Messaging
-  - Personal Blog
-  feed:
-    type: direct
-    url: https://bravenewgeek.com/feed/
 - name: Marc Brooker
   site_url: https://brooker.co.za/blog/
   enabled: true
@@ -435,28 +347,6 @@ sources:
   feed:
     type: direct
     url: https://nullprogram.com/feed/
-- name: John D. Cook
-  site_url: https://www.johndcook.com/blog/
-  enabled: true
-  display: default
-  tags:
-  - Math
-  - Programming
-  - Personal Blog
-  feed:
-    type: direct
-    url: https://www.johndcook.com/blog/feed/
-- name: Jay Alammar
-  site_url: https://jalammar.github.io/
-  enabled: true
-  display: featured
-  tags:
-  - AI
-  - Machine Learning
-  - Personal Blog
-  feed:
-    type: direct
-    url: https://jalammar.github.io/feed.xml
 - name: Lilian Weng
   site_url: https://lilianweng.github.io/
   enabled: true
@@ -490,28 +380,6 @@ sources:
   feed:
     type: direct
     url: https://eugeneyan.com/rss/
-- name: Sebastian Raschka
-  site_url: https://sebastianraschka.com/
-  enabled: true
-  display: default
-  tags:
-  - AI
-  - Machine Learning
-  - Personal Blog
-  feed:
-    type: direct
-    url: https://sebastianraschka.com/rss_feed.xml
-- name: Jeremy Kun
-  site_url: https://www.jeremykun.com/
-  enabled: true
-  display: default
-  tags:
-  - Algorithms
-  - Math
-  - Personal Blog
-  feed:
-    type: direct
-    url: https://www.jeremykun.com/index.xml
 - name: Red Blob Games
   site_url: https://www.redblobgames.com/
   enabled: true
@@ -655,17 +523,6 @@ sources:
   feed:
     type: direct
     url: https://www.crunchydata.com/blog/rss.xml
-- name: ClickHouse Blog
-  site_url: https://clickhouse.com/blog
-  enabled: true
-  display: featured
-  tags:
-  - Database
-  - Analytics
-  - Engineering
-  feed:
-    type: direct
-    url: https://clickhouse.com/rss.xml
 - name: LWN.net
   site_url: https://lwn.net/
   enabled: true
@@ -765,17 +622,6 @@ sources:
   feed:
     type: direct
     url: https://andersmurphy.com/feed.xml
-- name: RIPE Labs
-  site_url: https://labs.ripe.net/
-  enabled: true
-  display: default
-  tags:
-  - Networking
-  - Security
-  - Research
-  feed:
-    type: direct
-    url: https://labs.ripe.net/feed.xml
 - name: Daniel Stenberg
   site_url: https://daniel.haxx.se/blog/
   enabled: true
@@ -820,21 +666,6 @@ sources:
   feed:
     type: direct
     url: https://deepmind.google/blog/rss.xml
-- name: Claude Blog
-  site_url: https://claude.com/blog
-  enabled: true
-  display: featured
-  tags:
-  - AI
-  - Developer Tools
-  - Agents
-  feed:
-    type: listing
-    url: https://claude.com/blog
-    link_selector: .blog_cms_grid a.clickable_link[href^="/blog/"]:not([href*="/category/"])
-    url_patterns:
-    - /blog/
-    base_url: https://claude.com
 - name: Anthropic Frontier Red Team
   site_url: https://red.anthropic.com/
   enabled: true
@@ -867,36 +698,6 @@ sources:
   feed:
     type: direct
     url: https://devblogs.microsoft.com/engineering-at-microsoft/feed/
-- name: Apple Machine Learning Research
-  site_url: https://machinelearning.apple.com/research/
-  enabled: true
-  display: default
-  tags:
-  - AI
-  - Machine Learning
-  - Apple
-  feed:
-    type: listing
-    url: https://machinelearning.apple.com/research
-    link_selector: a[href^="/research/"]:not([href*="?"])
-    url_patterns:
-    - /research/
-    base_url: https://machinelearning.apple.com
-- name: Stripe Engineering Articles
-  site_url: https://stripe.com/blog/engineering
-  enabled: true
-  display: default
-  tags:
-  - Payments
-  - Engineering
-  - Infrastructure
-  feed:
-    type: listing
-    url: https://stripe.com/blog/engineering
-    link_selector: a.BlogIndexPost__titleLink[href^="https://stripe.com/blog/"]
-    url_patterns:
-    - /blog/
-    base_url: https://stripe.com
 - name: Datadog Engineering
   site_url: https://www.datadoghq.com/blog/engineering/
   enabled: true
@@ -908,37 +709,6 @@ sources:
   feed:
     type: direct
     url: https://www.datadoghq.com/blog/engineering/index.xml
-- name: Supabase Engineering
-  site_url: https://supabase.com/blog/categories/engineering
-  enabled: true
-  display: default
-  tags:
-  - Database
-  - PostgreSQL
-  - Engineering
-  feed:
-    type: listing
-    url: https://supabase.com/blog/categories/engineering
-    link_selector: a[href^="/blog/"]:not([href*="/categories/"])
-    url_patterns:
-    - /blog/
-    base_url: https://supabase.com
-- name: Sentry Engineering
-  site_url: https://blog.sentry.io/engineering/
-  enabled: true
-  display: default
-  tags:
-  - Engineering
-  - Observability
-  - Developer Tools
-  feed:
-    type: listing
-    url: https://blog.sentry.io/engineering/
-    link_selector: article a.blog-card__link[href^="/"]
-    title_selector: .blog-card__title
-    url_patterns:
-    - https://blog.sentry.io/
-    base_url: https://blog.sentry.io
 - name: Elastic Security Labs
   site_url: https://www.elastic.co/security-labs
   enabled: true
@@ -950,47 +720,6 @@ sources:
   feed:
     type: direct
     url: https://www.elastic.co/security-labs/rss/feed.xml
-- name: Elastic Search Labs
-  site_url: https://www.elastic.co/search-labs/blog
-  enabled: true
-  display: default
-  tags:
-  - Search
-  - AI
-  - Engineering
-  feed:
-    type: listing
-    url: https://www.elastic.co/search-labs/blog
-    link_selector: main a[href*="/search-labs/blog/"]:not([href*="/category/"])
-    url_patterns:
-    - /search-labs/blog/
-    base_url: https://www.elastic.co
-- name: Red Hat Research
-  site_url: https://research.redhat.com/blog/
-  enabled: true
-  display: default
-  tags:
-  - Research
-  - Open Source
-  - Systems
-  feed:
-    type: direct
-    url: https://research.redhat.com/feed/
-- name: Auth0 Engineering
-  site_url: https://auth0.com/blog/engineering/
-  enabled: true
-  display: default
-  tags:
-  - Security
-  - Identity
-  - Engineering
-  feed:
-    type: listing
-    url: https://auth0.com/blog/engineering/
-    link_selector: a.sc-1akycv5-2[href^="/blog/"]
-    url_patterns:
-    - /blog/
-    base_url: https://auth0.com
 - name: Jane Street Tech Blog
   site_url: https://blog.janestreet.com/
   enabled: true
@@ -1013,44 +742,6 @@ sources:
   feed:
     type: direct
     url: https://engineering.ramp.com/rss.xml
-- name: Medium Engineering
-  site_url: https://medium.engineering/
-  enabled: true
-  display: default
-  tags:
-  - Engineering
-  - Platform
-  - Product Engineering
-  feed:
-    type: direct
-    url: https://medium.engineering/feed
-- name: Figma Engineering
-  site_url: https://www.figma.com/blog/engineering/
-  enabled: true
-  display: default
-  tags:
-  - Engineering
-  - Frontend
-  - Collaboration
-  feed:
-    type: listing
-    url: https://www.figma.com/blog/engineering/
-    link_selector: main a[href*="/blog/"]:has(p)
-    title_selector: main a[href*="/blog/"]:has(p) h3
-    url_patterns:
-    - /blog/
-    base_url: https://www.figma.com
-- name: Sourcegraph Blog
-  site_url: https://sourcegraph.com/blog/
-  enabled: true
-  display: default
-  tags:
-  - Developer Tools
-  - AI
-  - Engineering
-  feed:
-    type: direct
-    url: https://sourcegraph.com/blog/feed.rss
 - name: Blender Developers Blog
   site_url: https://code.blender.org/
   enabled: true
@@ -1062,17 +753,6 @@ sources:
   feed:
     type: direct
     url: https://code.blender.org/feed/
-- name: Artsy Engineering
-  site_url: https://artsy.github.io/
-  enabled: true
-  display: default
-  tags:
-  - Engineering
-  - Frontend
-  - Product Engineering
-  feed:
-    type: direct
-    url: https://artsy.github.io/feed
 - name: Stanford Hazy Research
   site_url: https://hazyresearch.stanford.edu/blog
   enabled: true
@@ -1128,39 +808,6 @@ sources:
   feed:
     type: direct
     url: https://distill.pub/rss.xml
-- name: The Gradient
-  site_url: https://thegradient.pub/
-  enabled: true
-  display: default
-  tags:
-  - Research
-  - AI
-  - Essays
-  feed:
-    type: direct
-    url: https://thegradient.pub/rss/
-- name: fast.ai
-  site_url: https://www.fast.ai/
-  enabled: true
-  display: default
-  tags:
-  - AI
-  - Learning
-  - Programming
-  feed:
-    type: direct
-    url: https://www.fast.ai/index.xml
-- name: Import AI
-  site_url: https://jack-clark.net/
-  enabled: true
-  display: default
-  tags:
-  - AI
-  - Research
-  - Newsletter
-  feed:
-    type: direct
-    url: https://jack-clark.net/feed/
 - name: Stanford AI Lab Blog
   site_url: https://ai.stanford.edu/blog/
   enabled: true
@@ -1172,50 +819,6 @@ sources:
   feed:
     type: direct
     url: https://ai.stanford.edu/blog/feed.xml
-- name: Will Larson
-  site_url: https://lethain.com/
-  enabled: true
-  display: default
-  tags:
-  - Engineering Leadership
-  - Career
-  - Growth
-  feed:
-    type: direct
-    url: https://lethain.com/feeds.xml
-- name: StaffEng
-  site_url: https://staffeng.com/
-  enabled: true
-  display: default
-  tags:
-  - Engineering Leadership
-  - Career
-  - Growth
-  feed:
-    type: direct
-    url: https://staffeng.com/index.xml
-- name: Charity Majors
-  site_url: https://charity.wtf/
-  enabled: true
-  display: default
-  tags:
-  - Observability
-  - Engineering Leadership
-  - Growth
-  feed:
-    type: direct
-    url: https://charity.wtf/feed/
-- name: Lara Hogan
-  site_url: https://larahogan.me/
-  enabled: true
-  display: default
-  tags:
-  - Engineering Leadership
-  - Management
-  - Growth
-  feed:
-    type: direct
-    url: https://larahogan.me/feed.xml
 - name: Armin Ronacher
   site_url: https://lucumr.pocoo.org/
   enabled: true
@@ -1227,17 +830,6 @@ sources:
   feed:
     type: direct
     url: https://lucumr.pocoo.org/feed.atom
-- name: Erik Bernhardsson
-  site_url: https://erikbern.com/
-  enabled: true
-  display: default
-  tags:
-  - Engineering
-  - Systems
-  - Essays
-  feed:
-    type: direct
-    url: https://erikbern.com/index.xml
 - name: matklad
   site_url: https://matklad.github.io/
   enabled: true
@@ -1282,50 +874,6 @@ sources:
   feed:
     type: direct
     url: https://blog.acolyer.org/feed/
-- name: ByteByteGo Newsletter
-  site_url: https://blog.bytebytego.com/
-  enabled: true
-  display: default
-  tags:
-  - System Design
-  - Engineering
-  - Newsletter
-  feed:
-    type: direct
-    url: https://blog.bytebytego.com/feed
-- name: LeadDev
-  site_url: https://leaddev.com/
-  enabled: true
-  display: default
-  tags:
-  - Engineering Leadership
-  - Career
-  - Growth
-  feed:
-    type: direct
-    url: https://leaddev.com/feed
-- name: Commoncog
-  site_url: https://commoncog.com/
-  enabled: true
-  display: default
-  tags:
-  - Learning
-  - Growth
-  - Essays
-  feed:
-    type: direct
-    url: https://commoncog.com/rss/
-- name: The Pragmatic Engineer
-  site_url: https://newsletter.pragmaticengineer.com/
-  enabled: true
-  display: default
-  tags:
-  - Engineering Leadership
-  - Career
-  - Industry
-  feed:
-    type: direct
-    url: https://newsletter.pragmaticengineer.com/feed
 - name: TigerBeetle Blog
   site_url: https://tigerbeetle.com/blog/
   enabled: true
@@ -1359,39 +907,6 @@ sources:
   feed:
     type: direct
     url: https://prometheus.io/blog/feed.xml
-- name: Systems Approach
-  site_url: https://systemsapproach.org/
-  enabled: true
-  display: default
-  tags:
-  - Networking
-  - Systems
-  - Learning
-  feed:
-    type: direct
-    url: https://systemsapproach.org/feed/
-- name: Dan Luu
-  site_url: https://danluu.com/
-  enabled: true
-  display: default
-  tags:
-  - Systems
-  - Engineering
-  - Essays
-  feed:
-    type: direct
-    url: https://danluu.com/atom.xml
-- name: Thorsten Ball
-  site_url: https://thorstenball.com/
-  enabled: true
-  display: default
-  tags:
-  - Programming
-  - Career
-  - Essays
-  feed:
-    type: direct
-    url: https://thorstenball.com/atom.xml
 - name: Ben Hoyt
   site_url: https://benhoyt.com/writings/
   enabled: true
@@ -1425,17 +940,6 @@ sources:
   feed:
     type: direct
     url: https://blog.regehr.org/feed
-- name: SIGPLAN Blog
-  site_url: https://blog.sigplan.org/
-  enabled: true
-  display: default
-  tags:
-  - Programming Languages
-  - Research
-  - Essays
-  feed:
-    type: direct
-    url: https://blog.sigplan.org/feed/
 - name: Niko Matsakis
   site_url: https://smallcultfollowing.com/babysteps/
   enabled: true
@@ -1491,17 +995,6 @@ sources:
   feed:
     type: direct
     url: https://overreacted.io/rss.xml
-- name: Tonsky
-  site_url: https://tonsky.me/
-  enabled: true
-  display: default
-  tags:
-  - UI
-  - Programming
-  - Essays
-  feed:
-    type: direct
-    url: https://tonsky.me/atom.xml
 - name: Hynek Schlawack
   site_url: https://hynek.me/
   enabled: true
@@ -1524,39 +1017,6 @@ sources:
   feed:
     type: direct
     url: https://blog.glyph.im/feeds/all.atom.xml
-- name: Jessitron
-  site_url: https://jessitron.com/
-  enabled: true
-  display: default
-  tags:
-  - Engineering Leadership
-  - Systems Thinking
-  - Growth
-  feed:
-    type: direct
-    url: https://jessitron.com/feed/
-- name: Code Without Rules
-  site_url: https://codewithoutrules.com/
-  enabled: true
-  display: default
-  tags:
-  - Career
-  - Python
-  - Growth
-  feed:
-    type: direct
-    url: https://codewithoutrules.com/atom.xml
-- name: Addy Osmani
-  site_url: https://addyosmani.com/
-  enabled: true
-  display: default
-  tags:
-  - Frontend
-  - AI
-  - Engineering Leadership
-  feed:
-    type: direct
-    url: https://addyosmani.com/rss.xml
 - name: 知乎 - skydownacai
   site_url: https://www.zhihu.com/people/skydownacai-9/posts
   enabled: true
@@ -1669,30 +1129,6 @@ sources:
   feed:
     type: rsshub
     route: /zhihu/posts/people/kevwan
-- name: 知乎 - RednaxelaFX
-  site_url: https://www.zhihu.com/people/rednaxelafx/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, JVM, Programming Languages]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/rednaxelafx
-- name: 知乎 - 尤雨溪
-  site_url: https://www.zhihu.com/people/evanyou/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, Frontend, JavaScript]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/evanyou
-- name: 知乎 - 文刀秋二
-  site_url: https://www.zhihu.com/people/edliu/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, Graphics, AI]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/edliu
 - name: 知乎 - 李博杰
   site_url: https://www.zhihu.com/people/li-bo-jie/posts
   enabled: true
@@ -1821,14 +1257,6 @@ sources:
   feed:
     type: rsshub
     route: /zhihu/posts/people/huang-dong-xu
-- name: 知乎 - YKIKO
-  site_url: https://www.zhihu.com/people/16bit-ykiko/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, C++, Developer Tools]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/16bit-ykiko
 - name: 知乎 - PENG Bo
   site_url: https://www.zhihu.com/people/bopengbopeng/posts
   enabled: true
@@ -1877,14 +1305,6 @@ sources:
   feed:
     type: rsshub
     route: /zhihu/posts/people/luochen1990
-- name: 知乎 - 一只方橙
-  site_url: https://www.zhihu.com/people/orangex4/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, Developer Tools, Writing]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/orangex4
 - name: 知乎 - 不吃夹生饭
   site_url: https://www.zhihu.com/people/bu-chi-jia-sheng-fan/posts
   enabled: true
@@ -1925,22 +1345,6 @@ sources:
   feed:
     type: rsshub
     route: /zhihu/posts/people/pizhenwei
-- name: 知乎 - 李沐
-  site_url: https://www.zhihu.com/people/mli65/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, AI, Learning]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/mli65
-- name: 知乎 - 蒋炎岩
-  site_url: https://www.zhihu.com/people/jiang-yan-yan-75/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, Systems, Learning]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/jiang-yan-yan-75
 - name: 知乎 - 蚂蚁Theta
   site_url: https://www.zhihu.com/people/ma-yi-theta-tuan-dui/posts
   enabled: true
