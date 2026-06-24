@@ -127,7 +127,6 @@ sources:
   feed:
     type: rsshub
     route: /anthropic/engineering
-  publish_policy: full_content
 - name: Amazon Science
   site_url: https://www.amazon.science/
   enabled: true
@@ -844,7 +843,6 @@ sources:
   - AI
   - Security
   - Research
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /anthropic/red
@@ -855,7 +853,6 @@ sources:
   tags:
   - AI
   - Research
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /openai/research
@@ -1084,7 +1081,6 @@ sources:
   - Research
   - AI
   - Systems
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /stanford/hazyresearch/blog
@@ -1096,7 +1092,6 @@ sources:
   - Database
   - Research
   - Systems
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /cmu/andypavlo/blog
@@ -1567,7 +1562,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Research]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/skydownacai-9
@@ -1576,7 +1570,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Engineering]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/youkaichao
@@ -1585,7 +1578,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Systems]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/waimen99
@@ -1594,7 +1586,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Research]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/su-jian-lin-22
@@ -1603,7 +1594,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Research]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/YunheWang
@@ -1612,7 +1602,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Research]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/naiyan-wang
@@ -1621,7 +1610,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Research]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/wang-feng-98-82
@@ -1630,7 +1618,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Database, Distributed Systems]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/ming-zi-zong-shi-hen-nan-qi
@@ -1639,7 +1626,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Linux, C++]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/giantchen
@@ -1648,7 +1634,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, C++, Programming Languages]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/frmf
@@ -1657,7 +1642,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Developer Tools]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/clouder0
@@ -1666,7 +1650,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Software Engineering]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/x111y11
@@ -1675,7 +1658,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Data]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/qtmuniao
@@ -1684,7 +1666,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Go, Microservices]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/kevwan
@@ -1693,7 +1674,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, JVM, Programming Languages]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/rednaxelafx
@@ -1702,7 +1682,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Frontend, JavaScript]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/evanyou
@@ -1711,7 +1690,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Graphics, AI]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/edliu
@@ -1720,7 +1698,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Learning]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/li-bo-jie
@@ -1729,7 +1706,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Engineering, AI]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/teng-xun-ji-zhu-gong-cheng
@@ -1738,7 +1714,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Engineering, Data]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/xi-cheng-ji-shu-zhong-xin
@@ -1747,7 +1722,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Engineering, AI]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/smartcodede-wu-ji-zhu
@@ -1756,7 +1730,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Engineering, AI]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/bi-li-bi-li-ji-zhu
@@ -1765,7 +1738,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Research, AI]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/wei-ruan-ya-zhou-yan-jiu-yuan
@@ -1774,7 +1746,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Engineering, AI]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/a-li-ba-ba-tao-xi-ji-zhu
@@ -1783,7 +1754,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Database]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/hu-jin-ming-31
@@ -1792,7 +1762,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Agents]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/chen-xun-51
@@ -1801,7 +1770,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Systems]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/feifeibear
@@ -1810,7 +1778,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Research]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/Kinnariya
@@ -1819,7 +1786,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Agents]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/hamann-lo
@@ -1828,7 +1794,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, GPU, Performance]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/tongsanpang
@@ -1837,7 +1802,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, JVM, Java]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/glavo
@@ -1846,7 +1810,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Runtime, Web]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/theanarkh
@@ -1855,7 +1818,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Database, Distributed Systems]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/huang-dong-xu
@@ -1864,7 +1826,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, C++, Developer Tools]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/16bit-ykiko
@@ -1873,7 +1834,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Research]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/bopengbopeng
@@ -1882,7 +1842,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Database, Learning]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/skyzh
@@ -1891,7 +1850,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Android, Systems]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/tian-weishu
@@ -1900,7 +1858,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Networking, Systems]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/xiao-hong-hui-15
@@ -1909,7 +1866,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, C++, Programming Languages]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/yan-ge-ge-32-1
@@ -1918,7 +1874,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Python, Programming Languages]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/luochen1990
@@ -1927,7 +1882,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Developer Tools, Writing]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/orangex4
@@ -1936,7 +1890,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Frontend, Security]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/bu-chi-jia-sheng-fan
@@ -1945,7 +1898,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Developer Tools, Systems]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/skywind3000
@@ -1954,7 +1906,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Programming Languages, Performance]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/marisa.moe
@@ -1963,7 +1914,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Compilers, JVM]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/max-xing
@@ -1972,7 +1922,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Infrastructure]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/pizhenwei
@@ -1981,7 +1930,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Learning]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/mli65
@@ -1990,7 +1938,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Systems, Learning]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/jiang-yan-yan-75
@@ -1999,7 +1946,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Engineering]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/ma-yi-theta-tuan-dui
@@ -2008,7 +1954,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, AI, Engineering]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/a-li-ji-zhu
@@ -2017,7 +1962,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Database, Engineering]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/tencentdbteng-xun-yun-shu-ju-ku
@@ -2026,7 +1970,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Architecture, Engineering]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/e-han-jia-gou-shi
@@ -2035,7 +1978,6 @@ sources:
   enabled: true
   display: default
   tags: [Zhihu, China, Security, Engineering]
-  publish_policy: full_content
   feed:
     type: rsshub
     route: /zhihu/posts/people/wang-yi-yun-yi-dun

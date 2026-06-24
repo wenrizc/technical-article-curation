@@ -74,7 +74,6 @@ class DiscoveredEntry:
 class SourceDiscoveryResult:
     source_name: str
     source_tags: list[str]
-    source_publish_policy: str
     etag: str | None
     modified: str | None
     last_status: str
@@ -385,7 +384,6 @@ def _discover_source(
             return SourceDiscoveryResult(
                 source_name=source.name,
                 source_tags=source.tags,
-                source_publish_policy=source.publish_policy or "full_content",
                 etag=etag,
                 modified=modified,
                 last_status="not_modified",
@@ -408,7 +406,6 @@ def _discover_source(
         return SourceDiscoveryResult(
             source_name=source.name,
             source_tags=source.tags,
-            source_publish_policy=source.publish_policy or "full_content",
             etag=etag,
             modified=modified,
             last_status="failed",
@@ -419,7 +416,6 @@ def _discover_source(
     return SourceDiscoveryResult(
         source_name=source.name,
         source_tags=source.tags,
-        source_publish_policy=source.publish_policy or "full_content",
         etag=etag,
         modified=modified,
         last_status="success",
@@ -447,7 +443,6 @@ def _add_candidate_and_queue_fetch(
     source_name: str,
     published_at: str | None,
     source_tags: list[str],
-    source_publish_policy: str,
     source_content_markdown: str | None,
     source_content_metadata: dict[str, object] | None,
     time_range: TimeRange,
@@ -461,7 +456,6 @@ def _add_candidate_and_queue_fetch(
         source_name=source_name,
         published_at=published_at,
         source_tags=source_tags,
-        source_publish_policy=source_publish_policy,
         source_content_markdown=source_content_markdown,
         source_content_metadata=source_content_metadata,
     )
@@ -528,7 +522,6 @@ def discover_candidates(
                     source_name=result.source_name,
                     published_at=entry.published_at,
                     source_tags=result.source_tags,
-                    source_publish_policy=result.source_publish_policy,
                     source_content_markdown=entry.source_content_markdown,
                     source_content_metadata=entry.source_content_metadata,
                     time_range=time_range,
@@ -554,7 +547,6 @@ def discover_candidates(
             source_name=candidate.source_name,
             published_at=candidate.published_at,
             source_tags=candidate.source_tags,
-            source_publish_policy=candidate.publish_policy,
             source_content_markdown=None,
             source_content_metadata=None,
             time_range=time_range,

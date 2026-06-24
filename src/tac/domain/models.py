@@ -174,7 +174,6 @@ class SourceConfig(BaseModel):
     feed: FeedConfig | None = None
     site_url: str | None = None
     tags: list[str] = Field(default_factory=list)
-    publish_policy: Literal["full_content", "summary_only"] | None = None
     manual_urls: list[ManualUrl] = Field(default_factory=list)
 
     model_config = {"extra": "forbid"}
@@ -191,14 +190,6 @@ class SourceConfig(BaseModel):
             else:
                 result.append(item)
         return result
-
-    @model_validator(mode="after")
-    def default_publish_policy(self) -> SourceConfig:
-        if self.publish_policy is None:
-            self.publish_policy = (
-                "summary_only" if self.feed and self.feed.type == "rsshub" else "full_content"
-            )
-        return self
 
 
 class SourcesFile(BaseModel):
@@ -225,4 +216,3 @@ class CandidateArticle(BaseModel):
     source_name: str
     published_at: str | None = None
     source_tags: list[str] = Field(default_factory=list)
-    publish_policy: Literal["full_content", "summary_only"] = "full_content"

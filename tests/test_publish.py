@@ -72,7 +72,7 @@ def test_publish_removes_stale_files_for_unaccepted_articles(tmp_path):
     assert not json_path.exists()
 
 
-def test_publish_summary_only_skips_markdown_body(tmp_path):
+def test_publish_writes_markdown_for_accepted_article(tmp_path):
     settings = _settings(tmp_path)
     conn = db.connect(settings.state_db)
     db.migrate(conn)
@@ -81,7 +81,6 @@ def test_publish_summary_only_skips_markdown_body(tmp_path):
         title="Hot Topic",
         url="https://example.com/hot",
         source_name="rsshub",
-        source_publish_policy="summary_only",
     )
     db.record_fetch_success(conn, article_id, "# Body", {"crawler": "fixture"})
     db.record_evaluation(conn, article_id, _accepted_result(), settings.model, "{}")
@@ -92,8 +91,7 @@ def test_publish_summary_only_skips_markdown_body(tmp_path):
     json_path = settings.public_dir / "articles" / f"{article['slug']}.json"
     record = json.loads(json_path.read_text(encoding="utf-8"))
 
-    assert not md_path.exists()
+    assert md_path.exists()
     assert json_path.exists()
-    assert record["publish_policy"] == "summary_only"
     assert record["content_type"] == "engineering_case"
-    assert "markdown_path" not in record
+    assert record["markdown_path"] == f"articles/{article['slug']}.md"

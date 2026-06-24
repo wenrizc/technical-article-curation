@@ -7,18 +7,7 @@ import tempfile
 import unicodedata
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
-
-TRACKING_QUERY_PREFIXES = ("utm_",)
-TRACKING_QUERY_KEYS = {
-    "spm",
-    "from",
-    "ref",
-    "ref_src",
-    "fbclid",
-    "gclid",
-    "igshid",
-}
+from urllib.parse import urlsplit, urlunsplit
 
 
 def utc_now_iso() -> str:
@@ -28,23 +17,15 @@ def utc_now_iso() -> str:
 def normalize_url(url: str) -> str:
     url = url.strip()
     parts = urlsplit(url)
+    if not parts.netloc:
+        return url
     scheme = (parts.scheme or "https").lower()
     netloc = parts.netloc.lower()
     if netloc.endswith(":80") and scheme == "http":
         netloc = netloc[:-3]
     if netloc.endswith(":443") and scheme == "https":
         netloc = netloc[:-4]
-    path = re.sub(r"/{2,}", "/", parts.path or "/")
-    if path != "/" and path.endswith("/"):
-        path = path[:-1]
-    query_items = []
-    for key, value in parse_qsl(parts.query, keep_blank_values=True):
-        lowered = key.lower()
-        if lowered in TRACKING_QUERY_KEYS or lowered.startswith(TRACKING_QUERY_PREFIXES):
-            continue
-        query_items.append((key, value))
-    query = urlencode(sorted(query_items), doseq=True)
-    return urlunsplit((scheme, netloc, path, query, ""))
+    return urlunsplit((scheme, netloc, parts.path, parts.query, parts.fragment))
 
 
 def slugify(text: str) -> str:

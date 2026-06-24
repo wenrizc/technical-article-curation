@@ -262,7 +262,6 @@ def list_public_articles(
             a.title,
             a.url,
             a.source_name AS source,
-            a.source_publish_policy AS publish_policy,
             a.status,
             a.published_at,
             a.collected_at,
@@ -324,7 +323,6 @@ def list_all_public_articles(
             a.title,
             a.url,
             a.source_name AS source,
-            a.source_publish_policy AS publish_policy,
             a.status,
             a.published_at,
             a.collected_at,
@@ -448,8 +446,6 @@ def get_public_article_detail(conn: sqlite3.Connection, slug: str) -> dict[str, 
     result = article_row_to_dict(article)
     result.pop("source_content_markdown", None)
     result.pop("source_content_metadata", None)
-    if result.get("source_publish_policy") == "summary_only":
-        result["content_markdown"] = None
     return result
 
 

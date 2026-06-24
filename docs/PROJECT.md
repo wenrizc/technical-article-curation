@@ -84,7 +84,6 @@ sources:
 
   - name: "知乎热榜"
     site_url: "https://www.zhihu.com/hot"
-    publish_policy: "summary_only"
     feed:
       type: "rsshub"
       route: "/zhihu/hot"

@@ -355,6 +355,37 @@ def slug_exists(conn: sqlite3.Connection, slug: str) -> bool:
     return conn.execute("SELECT 1 FROM articles WHERE slug = ?", (slug,)).fetchone() is not None
 
 
+def _update_existing_candidate(
+    conn: sqlite3.Connection,
+    existing: sqlite3.Row,
+    *,
+    parsed_published_at: str | None,
+    cleaned_source_content: str | None,
+    source_content_metadata_json: str,
+    now: str,
+) -> tuple[int, ArticleStatus, bool]:
+    updates: list[str] = []
+    params: list[object] = []
+    if parsed_published_at and not existing["published_at"]:
+        updates.append("published_at = ?")
+        params.append(parsed_published_at)
+    if cleaned_source_content and not _row_value(existing, "source_content_markdown"):
+        updates.append("source_content_markdown = ?")
+        params.append(cleaned_source_content)
+        updates.append("source_content_metadata = ?")
+        params.append(source_content_metadata_json)
+    if updates:
+        updates.append("updated_at = ?")
+        params.append(now)
+        params.append(existing["id"])
+        conn.execute(
+            f"UPDATE articles SET {', '.join(updates)} WHERE id = ?",
+            params,
+        )
+        conn.commit()
+    return int(existing["id"]), ArticleStatus(existing["status"]), False
+
+
 def add_candidate(
     conn: sqlite3.Connection,
     *,
@@ -363,7 +394,6 @@ def add_candidate(
     source_name: str,
     published_at: str | None = None,
     source_tags: Iterable[str] = (),
-    source_publish_policy: str = "full_content",
     source_content_markdown: str | None = None,
     source_content_metadata: dict[str, object] | None = None,
 ) -> tuple[int, ArticleStatus, bool]:
@@ -378,57 +408,57 @@ def add_candidate(
     source_content_metadata_json = json.dumps(source_content_metadata or {}, ensure_ascii=False)
     existing = find_existing(conn, normalized_url)
     if existing:
-        updates: list[str] = []
-        params: list[object] = []
-        if parsed_published_at and not existing["published_at"]:
-            updates.append("published_at = ?")
-            params.append(parsed_published_at)
-        if cleaned_source_content and not _row_value(existing, "source_content_markdown"):
-            updates.append("source_content_markdown = ?")
-            params.append(cleaned_source_content)
-            updates.append("source_content_metadata = ?")
-            params.append(source_content_metadata_json)
-        if updates:
-            updates.append("updated_at = ?")
-            params.append(now)
-            params.append(existing["id"])
-            conn.execute(
-                f"UPDATE articles SET {', '.join(updates)} WHERE id = ?",
-                params,
-            )
-            conn.commit()
-        return int(existing["id"]), ArticleStatus(existing["status"]), False
+        return _update_existing_candidate(
+            conn,
+            existing,
+            parsed_published_at=parsed_published_at,
+            cleaned_source_content=cleaned_source_content,
+            source_content_metadata_json=source_content_metadata_json,
+            now=now,
+        )
 
     status = ArticleStatus.candidate
     slug = source_title_slug(source_name, title or url, normalized_url, exists=False)
     if slug_exists(conn, slug):
         slug = source_title_slug(source_name, title or url, normalized_url, exists=True)
 
-    cur = conn.execute(
-        """
-        INSERT INTO articles(
-            source_name, title, url, normalized_url, slug,
-            status, retry_count, published_at, created_at, updated_at, source_tags,
-            source_publish_policy, source_content_markdown, source_content_metadata
+    try:
+        cur = conn.execute(
+            """
+            INSERT INTO articles(
+                source_name, title, url, normalized_url, slug,
+                status, retry_count, published_at, created_at, updated_at, source_tags,
+                source_content_markdown, source_content_metadata
+            )
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                source_name,
+                title or url,
+                url,
+                normalized_url,
+                slug,
+                status.value,
+                parsed_published_at,
+                now,
+                now,
+                json.dumps(list(source_tags), ensure_ascii=False),
+                cleaned_source_content,
+                source_content_metadata_json,
+            ),
         )
-        VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            source_name,
-            title or url,
-            url,
-            normalized_url,
-            slug,
-            status.value,
-            parsed_published_at,
-            now,
-            now,
-            json.dumps(list(source_tags), ensure_ascii=False),
-            source_publish_policy,
-            cleaned_source_content,
-            source_content_metadata_json,
-        ),
-    )
+    except sqlite3.IntegrityError:
+        existing = find_existing(conn, normalized_url)
+        if existing is None:
+            raise
+        return _update_existing_candidate(
+            conn,
+            existing,
+            parsed_published_at=parsed_published_at,
+            cleaned_source_content=cleaned_source_content,
+            source_content_metadata_json=source_content_metadata_json,
+            now=now,
+        )
     conn.commit()
     return int(cur.lastrowid), status, True
 

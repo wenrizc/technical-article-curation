@@ -93,12 +93,13 @@ def test_feed_config_rejects_rsshub_full_url_route():
         FeedConfig.model_validate({"type": "rsshub", "route": "https://rsshub.app/zhihu/hot"})
 
 
-def test_rsshub_source_defaults_to_summary_only_publish_policy():
+def test_rsshub_source_accepts_route():
     source = SourceConfig.model_validate(
         {"name": "zhihu", "feed": {"type": "rsshub", "route": "/zhihu/hot"}}
     )
 
-    assert source.publish_policy == "summary_only"
+    assert source.feed is not None
+    assert source.feed.route == "/zhihu/hot"
 
 
 def test_feed_config_validates_sitemap_url():
@@ -149,7 +150,7 @@ def test_feed_config_listing_rejects_invalid_base_url():
         )
 
 
-def test_sitemap_and_listing_default_to_full_content_publish_policy():
+def test_sitemap_and_listing_sources_validate():
     sitemap_source = SourceConfig.model_validate(
         {"name": "a", "feed": {"type": "sitemap", "url": "https://example.com/sitemap.xml"}}
     )
@@ -160,5 +161,5 @@ def test_sitemap_and_listing_default_to_full_content_publish_policy():
         }
     )
 
-    assert sitemap_source.publish_policy == "full_content"
-    assert listing_source.publish_policy == "full_content"
+    assert sitemap_source.feed is not None
+    assert listing_source.feed is not None

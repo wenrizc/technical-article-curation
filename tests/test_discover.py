@@ -296,7 +296,7 @@ sources:
     assert seen["max_workers"] == 4
 
 
-def test_discover_builds_rsshub_feed_url_and_records_summary_policy(tmp_path, monkeypatch):
+def test_discover_builds_rsshub_feed_url(tmp_path, monkeypatch):
     settings = _settings(
         tmp_path,
         """
@@ -328,14 +328,11 @@ sources:
     )
 
     result = discover_candidates(settings, conn)
-    article = conn.execute("SELECT * FROM articles WHERE source_name = 'zhihu'").fetchone()
-
     assert result["inserted"] == 1
     assert (
         session.calls[0]["url"]
         == "http://rsshub.local:1200/zhihu/hot?limit=20&filter=AI%7C%E5%B7%A5%E7%A8%8B"
     )
-    assert article["source_publish_policy"] == "summary_only"
 
 
 def test_discover_records_feed_entry_content_for_fetch_priority(tmp_path, monkeypatch):

@@ -155,7 +155,6 @@ def _seed_article(
     title: str,
     url: str,
     source_name: str = "manual",
-    source_publish_policy: str = "full_content",
 ) -> int:
     conn = db.connect(settings.state_db)
     db.migrate(conn)
@@ -164,7 +163,6 @@ def _seed_article(
         title=title,
         url=url,
         source_name=source_name,
-        source_publish_policy=source_publish_policy,
     )
     db.record_fetch_success(conn, article_id, f"# {title}\n\nSecret body", {"crawler": "fixture"})
     db.record_evaluation(conn, article_id, _accepted_result(), settings.model, "{}")
@@ -390,7 +388,7 @@ def test_public_api_only_exposes_accepted_articles(tmp_path):
     assert index == []
 
 
-def test_public_api_hides_summary_only_markdown(tmp_path):
+def test_public_api_returns_full_content_markdown(tmp_path):
     settings = _settings(tmp_path)
     conn = db.connect(settings.state_db)
     db.migrate(conn)
@@ -399,7 +397,6 @@ def test_public_api_hides_summary_only_markdown(tmp_path):
         title="Hot",
         url="https://example.com/hot",
         source_name="rsshub",
-        source_publish_policy="summary_only",
     )
     db.record_fetch_success(conn, article_id, "# Body", {"crawler": "fixture"})
     db.record_evaluation(conn, article_id, _accepted_result(), settings.model, "{}")
@@ -410,8 +407,7 @@ def test_public_api_hides_summary_only_markdown(tmp_path):
     with TestClient(app) as client:
         detail = client.get(f"/api/public/articles/{slug}").json()
 
-    assert detail["content_markdown"] is None
-    assert detail["source_publish_policy"] == "summary_only"
+    assert detail["content_markdown"] == "# Body"
     assert detail["content_type"] == "engineering_case"
 
 
@@ -516,14 +512,13 @@ def test_public_rss_feed_last_modified_uses_latest_item_time(tmp_path):
     assert last_modified == datetime(2026, 6, 22, 10, 0, tzinfo=UTC)
 
 
-def test_public_rss_feed_summary_only_does_not_include_markdown(tmp_path):
+def test_public_rss_feed_handles_rsshub_article(tmp_path):
     settings = _settings(tmp_path)
     _seed_article(
         settings,
-        title="Summary Only",
+        title="RSSHub Article",
         url="https://example.com/s",
         source_name="rsshub",
-        source_publish_policy="summary_only",
     )
     app = create_app(settings)
 
@@ -531,8 +526,8 @@ def test_public_rss_feed_summary_only_does_not_include_markdown(tmp_path):
         response = client.get("/api/public/feed.xml")
 
     parsed = feedparser.parse(response.content)
-    assert parsed.entries[0].title == "Summary Only"
-    assert "Secret body" not in parsed.entries[0].description
+    assert parsed.entries[0].title == "RSSHub Article"
+    assert parsed.entries[0].source.title == "rsshub"
     assert "推荐理由" in parsed.entries[0].description
 
 

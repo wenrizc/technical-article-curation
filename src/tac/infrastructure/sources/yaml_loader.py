@@ -24,7 +24,6 @@ def manual_candidates(config: SourcesFile) -> list[CandidateArticle]:
                 source_name="manual",
                 published_at=item.published_at,
                 source_tags=item.tags,
-                publish_policy="full_content",
             )
         )
     for source in config.sources:
@@ -38,7 +37,6 @@ def manual_candidates(config: SourcesFile) -> list[CandidateArticle]:
                     source_name=source.name,
                     published_at=item.published_at,
                     source_tags=[*source.tags, *item.tags],
-                    publish_policy=source.publish_policy or "full_content",
                 )
             )
     return candidates

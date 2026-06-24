@@ -1,10 +1,10 @@
 from tac.shared.utils import normalize_url, source_title_slug
 
 
-def test_normalize_url_removes_tracking_and_default_port():
+def test_normalize_url_only_normalizes_scheme_host_and_default_port():
     assert (
         normalize_url("HTTPS://Example.com:443/a//b/?utm_source=x&b=2&a=1#frag")
-        == "https://example.com/a/b?a=1&b=2"
+        == "https://example.com/a//b/?utm_source=x&b=2&a=1#frag"
     )
 
 

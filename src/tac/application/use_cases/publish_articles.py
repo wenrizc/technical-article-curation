@@ -44,7 +44,6 @@ def _public_record(
         "title": article["title"],
         "url": article["url"],
         "source": article["source_name"],
-        "publish_policy": article["source_publish_policy"],
         "published_at": article["published_at"],
         "collected_at": article["collected_at"],
         "content_type": article["content_type"],
@@ -52,9 +51,8 @@ def _public_record(
         "tags": tags,
         "recommendation_reason": article["recommendation_reason"],
         "dimensions": dimensions,
+        "markdown_path": f"articles/{slug}.md",
     }
-    if article["source_publish_policy"] == "full_content":
-        record["markdown_path"] = f"articles/{slug}.md"
     return record
 
 
@@ -73,15 +71,14 @@ def publish_public(settings: Settings, conn: sqlite3.Connection) -> dict[str, in
         md_path = articles_dir / f"{slug}.md"
         json_path = articles_dir / f"{slug}.json"
         expected_files.add(json_path)
-        if article["source_publish_policy"] == "full_content":
-            expected_files.add(md_path)
-            md = (
-                _frontmatter(article, tags)
-                + _source_block(article, article["fetched_at"])
-                + article["content_markdown"].strip()
-                + "\n"
-            )
-            atomic_write_text(md_path, md)
+        expected_files.add(md_path)
+        md = (
+            _frontmatter(article, tags)
+            + _source_block(article, article["fetched_at"])
+            + article["content_markdown"].strip()
+            + "\n"
+        )
+        atomic_write_text(md_path, md)
         atomic_write_text(json_path, json.dumps(record, ensure_ascii=False, indent=2) + "\n")
     for path in articles_dir.glob("*"):
         if path.is_file() and path.suffix in {".json", ".md"} and path not in expected_files:

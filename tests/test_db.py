@@ -1,4 +1,7 @@
+import sqlite3
 from pathlib import Path
+
+import pytest
 
 from tac.application.use_cases import manage_articles as articles
 from tac.application.use_cases import manage_tags as tags
@@ -37,20 +40,150 @@ def _accepted_result(
     )
 
 
-def test_add_candidate_dedupes_by_normalized_url(tmp_path):
+def test_add_candidate_dedupes_by_safe_url_normalization(tmp_path):
     conn = _connect(tmp_path)
     id1, _, inserted1 = db.add_candidate(
-        conn, title="A", url="https://example.com/post?utm_source=rss", source_name="s"
+        conn, title="A", url="HTTPS://Example.com:443/post", source_name="s"
     )
-    # 带尾斜杠和追踪参数的同一文章会归一化为同一 URL，应复用已有记录。
     id2, _, inserted2 = db.add_candidate(
-        conn, title="A again", url="https://example.com/post/", source_name="s"
+        conn, title="A again", url="https://example.com/post", source_name="s"
     )
     assert inserted1 is True
     assert inserted2 is False
     assert id1 == id2
     count = conn.execute("SELECT COUNT(*) FROM articles").fetchone()[0]
     assert count == 1
+
+
+def test_normalized_url_unique_index_rejects_raw_duplicates(tmp_path):
+    conn = _connect(tmp_path)
+    db.add_candidate(conn, title="A", url="https://example.com/post", source_name="s")
+
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute(
+            """
+            INSERT INTO articles(
+                source_name, title, url, normalized_url, slug,
+                status, created_at, updated_at, source_tags
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "s2",
+                "A duplicate",
+                "https://example.com/post",
+                "https://example.com/post",
+                "s2-a-duplicate",
+                "candidate",
+                "2026-01-01T00:00:00Z",
+                "2026-01-01T00:00:00Z",
+                "[]",
+            ),
+        )
+
+
+def test_add_candidate_recovers_from_unique_conflict_race(tmp_path, monkeypatch):
+    conn = _connect(tmp_path)
+    id1, _, _ = db.add_candidate(
+        conn, title="A", url="https://example.com/post", source_name="s"
+    )
+    original_find_existing = db.find_existing
+    calls = 0
+
+    def stale_first_read(conn_arg, normalized_url):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return None
+        return original_find_existing(conn_arg, normalized_url)
+
+    monkeypatch.setattr(db, "find_existing", stale_first_read)
+
+    id2, status, inserted = db.add_candidate(
+        conn,
+        title="A from another worker",
+        url="https://example.com/post",
+        source_name="s2",
+        published_at="2026-06-01T00:00:00Z",
+        source_content_markdown="Body from feed",
+        source_content_metadata={"source": "feed_entry"},
+    )
+    article = conn.execute("SELECT * FROM articles WHERE id = ?", (id1,)).fetchone()
+
+    assert id2 == id1
+    assert status is ArticleStatus.candidate
+    assert inserted is False
+    assert article["published_at"] == "2026-06-01T00:00:00Z"
+    assert article["source_content_markdown"] == "Body from feed"
+
+
+def test_unique_normalized_url_migration_preserves_legacy_duplicates(tmp_path):
+    conn = db.connect(tmp_path / "state.db")
+    conn.executescript(
+        """
+        CREATE TABLE schema_migrations (
+            version TEXT PRIMARY KEY,
+            applied_at TEXT NOT NULL
+        );
+        INSERT INTO schema_migrations(version, applied_at)
+        VALUES ('012_drop_article_publish_policy', '2026-01-01T00:00:00Z');
+
+        CREATE TABLE articles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_name TEXT NOT NULL,
+            title TEXT NOT NULL,
+            url TEXT NOT NULL,
+            normalized_url TEXT NOT NULL,
+            slug TEXT,
+            status TEXT NOT NULL,
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            published_at TEXT,
+            collected_at TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            error TEXT,
+            source_tags TEXT NOT NULL DEFAULT '[]',
+            source_content_markdown TEXT,
+            source_content_metadata TEXT NOT NULL DEFAULT '{}'
+        );
+
+        INSERT INTO articles(source_name, title, url, normalized_url, slug, status, created_at, updated_at)
+        VALUES
+            ('a', 'First', 'https://example.com/post', 'https://example.com/post', 'a-first', 'candidate', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+            ('b', 'Second', 'https://example.com/post', 'https://example.com/post', 'b-second', 'candidate', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+        """
+    )
+    conn.commit()
+    migrations_dir = tmp_path / "migrations"
+    migrations_dir.mkdir()
+    (migrations_dir / "013_unique_article_normalized_url.sql").write_text(
+        Path("migrations/013_unique_article_normalized_url.sql").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    applied = db.migrate(conn, migrations_dir=migrations_dir)
+    rows = conn.execute("SELECT id, normalized_url FROM articles ORDER BY id").fetchall()
+    indexes = conn.execute("PRAGMA index_list(articles)").fetchall()
+
+    assert applied == ["013_unique_article_normalized_url"]
+    assert [row["normalized_url"] for row in rows] == [
+        "https://example.com/post",
+        "https://example.com/post#duplicate-2",
+    ]
+    assert any(row["name"] == "idx_articles_normalized_url_unique" for row in indexes)
+
+
+def test_add_candidate_keeps_query_trailing_slash_and_fragment_distinct(tmp_path):
+    conn = _connect(tmp_path)
+    db.add_candidate(
+        conn, title="A", url="https://example.com/post?utm_source=rss", source_name="s"
+    )
+    db.add_candidate(conn, title="A slash", url="https://example.com/post/", source_name="s")
+    db.add_candidate(conn, title="A fragment", url="https://example.com/post#comments", source_name="s")
+
+    count = conn.execute("SELECT COUNT(*) FROM articles").fetchone()[0]
+    # query、尾斜杠和 fragment 可能参与定位内容，保守起见不再合并。
+    assert count == 3
 
 
 def test_add_candidate_same_title_different_url_not_deduped(tmp_path):
@@ -397,6 +530,10 @@ def test_destructive_migration_rebuilds_legacy_articles_schema(tmp_path):
         Path("migrations/010_feed_entry_content.sql").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
+    (migrations_dir / "012_drop_article_publish_policy.sql").write_text(
+        Path("migrations/012_drop_article_publish_policy.sql").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
 
     db.migrate(conn, migrations_dir=migrations_dir)
     columns = [row["name"] for row in conn.execute("PRAGMA table_info(articles)").fetchall()]
@@ -416,6 +553,7 @@ def test_destructive_migration_rebuilds_legacy_articles_schema(tmp_path):
     assert new_article["published_at"] == "2026-06-01T00:00:00Z"
     assert "published_at" in columns
     assert "source_content_markdown" in columns
+    assert "source_publish_policy" not in columns
     assert "normalized_title" not in columns
     assert "duplicate_of" not in columns
     assert "content_type" in evaluation_columns
