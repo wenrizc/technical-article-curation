@@ -55,7 +55,10 @@ def _headers(token: str) -> dict[str, str]:
     return {"X-TAC-CSRF": token, "Origin": "http://testserver"}
 
 
-def _accepted_result() -> EvaluationResult:
+def _accepted_result(
+    tags: list[str] | None = None,
+    suggested_tags: list[str] | None = None,
+) -> EvaluationResult:
     return EvaluationResult.model_validate(
         {
             "decision": "accept",
@@ -69,7 +72,8 @@ def _accepted_result() -> EvaluationResult:
                 "可读性": "high",
             },
             "summary": "摘要",
-            "tags": ["Architecture"],
+            "tags": tags or ["Architecture"],
+            "suggested_tags": suggested_tags or [],
             "recommendation_reason": "推荐理由",
             "full_reasoning": "内部原因",
         }
@@ -123,14 +127,24 @@ async def _run_guard_request(
     return await guard_request(request, call_next)
 
 
-def _seed_accepted(settings: Settings) -> int:
+def _seed_accepted(
+    settings: Settings,
+    tags: list[str] | None = None,
+    suggested_tags: list[str] | None = None,
+) -> int:
     conn = db.connect(settings.state_db)
     db.migrate(conn)
     article_id, _, _ = db.add_candidate(
         conn, title="Queue Latency", url="https://example.com/queue", source_name="manual"
     )
     db.record_fetch_success(conn, article_id, "# Body", {"crawler": "fixture"})
-    db.record_evaluation(conn, article_id, _accepted_result(), settings.model, "{}")
+    db.record_evaluation(
+        conn,
+        article_id,
+        _accepted_result(tags, suggested_tags),
+        settings.model,
+        "{}",
+    )
     conn.close()
     return article_id
 
@@ -621,18 +635,23 @@ def test_admin_tag_vocabulary_create_and_list(tmp_path):
         created = client.post(
             "/api/admin/tags",
             headers=_headers(token),
-            json={"name": "Architecture", "description": "架构主题"},
+            json={"name": "DX", "description": "开发者体验主题"},
         )
-        listed = client.get("/api/admin/tags")
+        listed = client.get("/api/admin/tags?q=DX")
 
     assert created.status_code == 200
-    assert created.json()["name"] == "Architecture"
-    assert listed.json()["items"][0]["description"] == "架构主题"
+    assert created.json()["name"] == "DX"
+    assert listed.json()["items"][0]["description"] == "开发者体验主题"
+    assert "DX" in app.state.tag_cache.names()
 
 
 def test_admin_tag_candidate_approval_updates_public_tags(tmp_path):
     settings = _settings(tmp_path)
-    article_id = _seed_accepted(settings)
+    article_id = _seed_accepted(
+        settings,
+        tags=["Architecture"],
+        suggested_tags=["New Niche Tag"],
+    )
     app = create_app(settings)
 
     with TestClient(app) as client:
@@ -647,7 +666,8 @@ def test_admin_tag_candidate_approval_updates_public_tags(tmp_path):
         public_detail = client.get(f"/api/public/articles/{slug}").json()
 
     assert approved.status_code == 200
-    assert public_detail["tags"] == ["Architecture"]
+    assert public_detail["tags"] == ["Architecture", "New Niche Tag"]
+    assert "New Niche Tag" in app.state.tag_cache.names()
 
 
 def test_schedules_api_lists_and_triggers_builtin_run(tmp_path):

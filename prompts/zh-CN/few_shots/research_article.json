@@ -1,19 +1,17 @@
 {
-  "input_type": "research_topic_analysis",
-  "output": {
-    "decision": "accept",
-    "content_type": "research_article",
-    "dimensions": {
-      "领域相关性": "high",
-      "长期价值": "high",
-      "内容深度": "high",
-      "原创性": "medium",
-      "可迁移性": "high",
-      "可读性": "high"
-    },
-    "summary": "文章梳理了数据库查询优化器的研究脉络，比较经典方法、学习型优化器和实验边界。",
-    "tags": ["Database", "Query Optimizer", "Research"],
-    "recommendation_reason": "具备清晰问题定义、论文依据和研究局限分析，适合作为数据库系统研究入门参考。",
-    "full_reasoning": "正文围绕查询优化器展开，解释传统代价模型、学习型方法、benchmark 局限和开放问题。虽然不是工程落地复盘，但有明确计算机科研价值和长期参考意义。"
-  }
+  "decision": "accept",
+  "content_type": "research_article",
+  "dimensions": {
+    "领域相关性": "high",
+    "长期价值": "high",
+    "内容深度": "high",
+    "原创性": "medium",
+    "可迁移性": "high",
+    "可读性": "high"
+  },
+  "summary": "文章梳理数据库查询优化器的研究脉络，从传统代价模型讲到学习型优化器，并比较不同方法的适用条件。作者结合论文和实验设置讨论 benchmark 局限、开放问题和工程落地边界，适合作为进入该方向的研究导读。",
+  "tags": ["Database", "Query Optimizer", "Research"],
+  "suggested_tags": [],
+  "recommendation_reason": "推荐收录，因为文章有明确的问题定义、论文依据和局限分析，不只是罗列研究标题。它能帮助读者建立数据库优化器方向的基本地图，并理解后续阅读论文时应关注的实验边界。",
+  "full_reasoning": "正文围绕查询优化器展开，解释传统代价模型、学习型方法、benchmark 局限和开放问题。虽然不是工程复盘，但具备明确计算机科研价值和长期参考意义。"
 }

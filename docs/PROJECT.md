@@ -204,11 +204,14 @@ AI 响应必须通过以下严格 schema 校验：
 - `content_type`：技术文章、工程实践、科研议题、科研思考、学习路线、个人心得、职业经验或工具笔记。
 - `dimensions`：领域相关性、长期价值、内容深度、原创性、可迁移性和可读性。
 - `summary`：公开摘要。
-- `tags`：公开标签。
+- `tags`：从正式词库中选择的公开标签。
+- `suggested_tags`：AI 希望新增到词库的标签建议。
 - `recommendation_reason`：公开推荐理由。
 - `full_reasoning`：内部完整判断依据，不公开发布。
 
 只有 `decision=accept` 的文章会自动收录。
+
+服务启动时会把 `tag_vocabulary` 中的 active 标签加载到内存缓存，评估提示词会动态注入这份正式词库。管理端创建、更新或审批标签时，会先更新 SQLite，再刷新内存缓存。`tags` 命中正式词库后会绑定到文章；`suggested_tags` 和误放入 `tags` 的词库外标签会进入 `tag_candidates` 等待人工审核。
 
 评估失败会记录到 `evaluation_failures`，不会写入 `fetches`，也不会修改文章状态。如果模型返回空内容、非法 JSON，或 JSON 无法通过 Pydantic 校验，评估器会最多按 `TAC_EVALUATION_MAX_ATTEMPTS` 重试，并把上一次原始输出和具体解析/校验错误发回模型修正。
 
@@ -223,6 +226,8 @@ AI 响应必须通过以下严格 schema 校验：
 - `articles`：文章身份、来源、归一化 URL、slug、状态、重试次数和时间戳。
 - `fetches`：抓取状态、Markdown 正文、错误和抓取元数据。
 - `evaluations`：AI 判断、维度、公开字段、内部判断依据、模型和原始 JSON。
+- `tag_vocabulary`：人工维护的正式标签词库，active 标签会注入评估提示词并用于公开发布。
+- `tag_candidates`：AI 建议或误放入 `tags` 的词库外标签，等待管理端人工审核。
 - `source_state`：最近 RSS 信源检查状态和条件请求字段。
 - `evaluation_failures`：评估失败记录，包括错误、尝试次数和最后一次模型原始返回。
 

@@ -1,19 +1,17 @@
 {
-  "input_type": "marketing_release_or_shallow_news",
-  "output": {
-    "decision": "reject",
-    "content_type": "technical_article",
-    "dimensions": {
-      "领域相关性": "medium",
-      "长期价值": "low",
-      "内容深度": "low",
-      "原创性": "low",
-      "可迁移性": "low",
-      "可读性": "medium"
-    },
-    "summary": "文章主要介绍产品功能或新闻动态，缺少可长期参考的分析和经验。",
-    "tags": ["Product"],
-    "recommendation_reason": "不收录，内容偏营销和新闻转述，无法提供长期计算机领域参考价值。",
-    "full_reasoning": "正文没有解释设计约束、实现细节、研究依据、学习路径或可迁移经验。即使主题相关，也不满足精选库的内容深度要求。"
-  }
+  "decision": "reject",
+  "content_type": "technical_article",
+  "dimensions": {
+    "领域相关性": "medium",
+    "长期价值": "low",
+    "内容深度": "low",
+    "原创性": "low",
+    "可迁移性": "low",
+    "可读性": "medium"
+  },
+  "summary": "文章主要围绕产品功能、发布动态或市场叙述展开，正文缺少对实现机制、设计约束和工程取舍的说明。虽然主题表面上与技术相关，但内容更接近新闻或营销稿，难以形成长期可复用的计算机领域参考。",
+  "tags": ["Engineering"],
+  "suggested_tags": ["Product"],
+  "recommendation_reason": "不收录，因为文章没有提供足够的技术细节、工程证据或独立分析。它对读者的主要价值停留在了解产品动态，不能支持架构判断、研究理解或实践迁移。",
+  "full_reasoning": "正文没有解释设计约束、实现细节、研究依据、学习路径或可迁移经验。即使标题或来源与技术相关，内容深度和长期价值仍不足以进入精选库。"
 }

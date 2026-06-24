@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, ValidationError
 from tac.application import pipeline
 from tac.application.jobs import JobConflict, JobManager, JobNotFound, JobQueueFull
 from tac.application.scheduler import SchedulerService
+from tac.application.tag_cache import TagVocabularyCache
 from tac.application.use_cases import manage_articles as articles
 from tac.application.use_cases import manage_tags as tags
 from tac.application.use_cases.discover_articles import (
@@ -25,7 +26,12 @@ from tac.application.use_cases.manage_sources import (
 )
 from tac.domain.models import ArticleStatus, FeedConfig, SourceConfig, TagStatus
 from tac.infrastructure.db import store as db
-from tac.web.deps import db_conn, job_manager_from_request, settings_from_request
+from tac.web.deps import (
+    db_conn,
+    job_manager_from_request,
+    settings_from_request,
+    tag_cache_from_request,
+)
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -186,9 +192,10 @@ def list_tags(
 def create_tag(
     payload: TagCreate,
     conn: Annotated[sqlite3.Connection, Depends(db_conn)],
+    tag_cache: Annotated[TagVocabularyCache, Depends(tag_cache_from_request)],
 ) -> dict[str, object]:
     try:
-        return tags.create_tag(
+        row = tags.create_tag(
             conn,
             name=payload.name,
             description=payload.description,
@@ -198,6 +205,8 @@ def create_tag(
         raise HTTPException(status_code=409, detail="tag already exists") from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    tag_cache.refresh(conn)
+    return row
 
 
 @router.patch("/tags/{tag_id}")
@@ -205,6 +214,7 @@ def update_tag(
     tag_id: int,
     payload: TagUpdate,
     conn: Annotated[sqlite3.Connection, Depends(db_conn)],
+    tag_cache: Annotated[TagVocabularyCache, Depends(tag_cache_from_request)],
 ) -> dict[str, object]:
     try:
         row = tags.update_tag(
@@ -220,6 +230,7 @@ def update_tag(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if row is None:
         raise HTTPException(status_code=404, detail="tag not found")
+    tag_cache.refresh(conn)
     return row
 
 
@@ -238,6 +249,7 @@ def approve_tag_candidate(
     candidate_id: int,
     payload: TagCandidateApprove,
     conn: Annotated[sqlite3.Connection, Depends(db_conn)],
+    tag_cache: Annotated[TagVocabularyCache, Depends(tag_cache_from_request)],
 ) -> dict[str, object]:
     try:
         row = tags.approve_candidate(
@@ -250,6 +262,7 @@ def approve_tag_candidate(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if row is None:
         raise HTTPException(status_code=404, detail="tag candidate not found")
+    tag_cache.refresh(conn)
     return row
 
 
@@ -283,11 +296,12 @@ def retry_evaluate(
     article_id: int, request: Request, background_tasks: BackgroundTasks
 ) -> dict[str, object]:
     settings = settings_from_request(request)
+    tag_cache = tag_cache_from_request(request)
     return _submit(
         request,
         background_tasks,
         "retry-evaluate",
-        lambda: pipeline.run_evaluate(settings, article_ids=[article_id]),
+        lambda: pipeline.run_evaluate(settings, article_ids=[article_id], tag_cache=tag_cache),
         target_article_id=article_id,
     )
 
@@ -483,7 +497,13 @@ def run_fetch(request: Request, background_tasks: BackgroundTasks) -> dict[str, 
 @router.post("/jobs/evaluate")
 def run_evaluate(request: Request, background_tasks: BackgroundTasks) -> dict[str, object]:
     settings = settings_from_request(request)
-    return _submit(request, background_tasks, "evaluate", lambda: pipeline.run_evaluate(settings))
+    tag_cache = tag_cache_from_request(request)
+    return _submit(
+        request,
+        background_tasks,
+        "evaluate",
+        lambda: pipeline.run_evaluate(settings, tag_cache=tag_cache),
+    )
 
 
 @router.post("/jobs/publish")
@@ -500,9 +520,10 @@ def run_all(
     until: str | None = None,
 ) -> dict[str, object]:
     settings = settings_from_request(request)
+    tag_cache = tag_cache_from_request(request)
     return _submit(
         request,
         background_tasks,
         "run",
-        lambda: pipeline.run_all(settings, since=since, until=until),
+        lambda: pipeline.run_all(settings, since=since, until=until, tag_cache=tag_cache),
     )

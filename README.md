@@ -160,9 +160,9 @@ uv run uvicorn tac.main:app --host 127.0.0.1 --port 1104 --reload
 
 AI 调用使用官方 `openai` Python SDK。`TAC_MODEL` 作为模型名传入，`TAC_BASE_URL` 作为 SDK 的 `base_url` 传入。
 
-AI 评估输出使用严格 JSON schema。当前顶层字段为 `decision`、`content_type`、`dimensions`、`summary`、`tags`、`recommendation_reason` 和 `full_reasoning`；不再包含独立 `confidence` 字段。`content_type` 用于区分技术文章、工程实践、科研议题、科研思考、学习路线、个人心得、职业经验和工具笔记。`dimensions` 包含领域相关性、长期价值、内容深度、原创性、可迁移性和可读性。系统只根据 `decision` 判断结果：`accept` 自动收录，`reject` 拒收，`low_confidence` 留待复核。
+AI 评估输出使用严格 JSON schema。当前顶层字段为 `decision`、`content_type`、`dimensions`、`summary`、`tags`、`suggested_tags`、`recommendation_reason` 和 `full_reasoning`；不再包含独立 `confidence` 字段。`content_type` 用于区分技术文章、工程实践、科研议题、科研思考、学习路线、个人心得、职业经验和工具笔记。`dimensions` 包含领域相关性、长期价值、内容深度、原创性、可迁移性和可读性。系统只根据 `decision` 判断结果：`accept` 自动收录，`reject` 拒收，`low_confidence` 留待复核。
 
-`tags` 里的原始 AI 标签会保留在评估审计里，但公开标签只来自 SQLite 中的正式词库 `tag_vocabulary`。词库外新标签会先进入 `tag_candidates`，由 `/admin` 管理页人工审核后再转入正式标签并回填文章。
+服务启动时会把 SQLite 正式词库 `tag_vocabulary` 中的 active 标签缓存到内存，并在构建评估提示词时动态注入。管理端创建、更新或审批标签时，会先写入数据库，再刷新内存缓存。`tags` 应从正式词库中选择；`suggested_tags` 用于承载模型希望新增的标签。公开标签只来自正式词库，词库外标签建议会先进入 `tag_candidates`，由 `/admin` 管理页人工审核后再转入正式标签并回填文章。
 
 ## 测试
 

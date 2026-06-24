@@ -29,6 +29,19 @@ def tag_slug(value: str) -> str:
     return normalized.replace(" ", "-")
 
 
+def active_tag_names(conn: sqlite3.Connection) -> list[str]:
+    rows = conn.execute(
+        """
+        SELECT name
+        FROM tag_vocabulary
+        WHERE status = ?
+        ORDER BY name COLLATE NOCASE ASC
+        """,
+        (TagStatus.active.value,),
+    ).fetchall()
+    return [str(row["name"]) for row in rows]
+
+
 def migrate(conn: sqlite3.Connection, migrations_dir: Path = Path("migrations")) -> list[str]:
     applied: list[str] = []
     conn.execute(
@@ -592,7 +605,14 @@ def record_evaluation(
         ),
     )
     evaluation_id = int(cur.lastrowid)
-    _sync_evaluation_tags(conn, article_id, evaluation_id, result.tags, now)
+    _sync_evaluation_tags(
+        conn,
+        article_id,
+        evaluation_id,
+        result.tags,
+        result.suggested_tags,
+        now,
+    )
     if article:
         if result.decision.value == "accept":
             status = ArticleStatus.accepted.value
@@ -619,6 +639,7 @@ def _sync_evaluation_tags(
     article_id: int,
     evaluation_id: int,
     tags: Iterable[str],
+    suggested_tags: Iterable[str],
     now: str,
 ) -> None:
     conn.execute("DELETE FROM article_tags WHERE article_id = ?", (article_id,))
@@ -662,7 +683,47 @@ def _sync_evaluation_tags(
                 name,
                 normalized,
                 TagCandidateStatus.pending.value,
-                "AI 评估输出了词库外新标签",
+                "AI 评估将词库外标签放入 tags",
+                now,
+                now,
+            ),
+        )
+    for tag in suggested_tags:
+        name = str(tag).strip()
+        normalized = normalize_tag_name(name)
+        if not name or not normalized:
+            continue
+        vocab = conn.execute(
+            """
+            SELECT id FROM tag_vocabulary
+            WHERE normalized_name = ? AND status = ?
+            """,
+            (normalized, TagStatus.active.value),
+        ).fetchone()
+        if vocab:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO article_tags(article_id, tag_id, evaluation_id, created_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (article_id, int(vocab["id"]), evaluation_id, now),
+            )
+            continue
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO tag_candidates(
+                article_id, evaluation_id, suggested_tag, normalized_name, status,
+                reason, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                article_id,
+                evaluation_id,
+                name,
+                normalized,
+                TagCandidateStatus.pending.value,
+                "AI 评估输出 suggested_tags 新标签建议",
                 now,
                 now,
             ),

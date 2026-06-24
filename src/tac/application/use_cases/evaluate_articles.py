@@ -7,6 +7,7 @@ from typing import Any
 
 from openai import OpenAI
 
+from tac.application.tag_cache import TagVocabularyCache
 from tac.domain.models import EvaluationResult
 from tac.infrastructure.db import store as db
 from tac.settings import Settings
@@ -19,8 +20,22 @@ class EvaluationFailed(RuntimeError):
         self.raw_response = raw_response
 
 
-def load_prompt(settings: Settings) -> str:
+def _tag_vocabulary_section(tag_names: list[str] | tuple[str, ...] | None) -> str:
+    if not tag_names:
+        return ""
+    tags_json = json.dumps(list(tag_names), ensure_ascii=False, indent=2)
+    return (
+        "\n\n## 当前正式标签词库\n\n"
+        "只能从以下正式标签中选择 `tags`。如果没有合适标签，"
+        "`tags` 仍需至少选择一个最接近的正式标签，并在 `suggested_tags` "
+        "中提出希望新增的标签。\n\n"
+        f"```json\n{tags_json}\n```"
+    )
+
+
+def load_prompt(settings: Settings, tag_names: list[str] | tuple[str, ...] | None = None) -> str:
     prompt = settings.prompt_path.read_text(encoding="utf-8")
+    prompt += _tag_vocabulary_section(tag_names)
     examples = []
     if settings.few_shot_dir.exists():
         for path in sorted(settings.few_shot_dir.glob("*.json")):
@@ -87,6 +102,7 @@ def evaluate_with_ai(
     source_name: str,
     source_tags: list[str],
     content_markdown: str,
+    tag_names: list[str] | tuple[str, ...] | None = None,
 ) -> tuple[EvaluationResult, str]:
     if settings.ai_response_path:
         raw = settings.ai_response_path.read_text(encoding="utf-8")
@@ -96,7 +112,7 @@ def evaluate_with_ai(
     if not settings.api_key:
         raise RuntimeError("OPENAI_API_KEY is required unless TAC_AI_RESPONSE_PATH is set")
 
-    prompt = load_prompt(settings)
+    prompt = load_prompt(settings, tag_names)
     user_content = (
         f"# Title\n{title}\n\n"
         f"# URL\n{url}\n\n"
@@ -187,6 +203,7 @@ def _evaluate_article(
     settings: Settings,
     article: sqlite3.Row,
     content_markdown: str,
+    tag_names: list[str] | tuple[str, ...],
 ) -> tuple[int, EvaluationResult | None, str | None, EvaluationFailed | Exception | None]:
     try:
         result, raw_json = evaluate_with_ai(
@@ -196,6 +213,7 @@ def _evaluate_article(
             source_name=article["source_name"],
             source_tags=_source_tags(article),
             content_markdown=content_markdown,
+            tag_names=tag_names,
         )
         return int(article["id"]), result, raw_json, None
     except Exception as exc:
@@ -207,6 +225,7 @@ def evaluate_pending(
     conn: sqlite3.Connection,
     limit: int | None = None,
     article_ids: list[int] | None = None,
+    tag_cache: TagVocabularyCache | None = None,
 ) -> dict[str, int]:
     accepted = 0
     rejected = 0
@@ -240,10 +259,11 @@ def evaluate_pending(
             "failed": 0,
         }
 
+    tag_names = tag_cache.names() if tag_cache is not None else tuple(db.active_tag_names(conn))
     max_workers = max(1, settings.evaluate_max_concurrency)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
-            executor.submit(_evaluate_article, settings, article, content_markdown)
+            executor.submit(_evaluate_article, settings, article, content_markdown, tag_names)
             for article, content_markdown in tasks
         ]
         for future in as_completed(futures):

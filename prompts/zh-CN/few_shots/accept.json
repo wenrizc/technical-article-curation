@@ -1,19 +1,17 @@
 {
-  "input_type": "high_quality_engineering_case",
-  "output": {
-    "decision": "accept",
-    "content_type": "engineering_case",
-    "dimensions": {
-      "领域相关性": "high",
-      "长期价值": "high",
-      "内容深度": "high",
-      "原创性": "high",
-      "可迁移性": "high",
-      "可读性": "high"
-    },
-    "summary": "文章复盘了线上性能问题，说明了定位路径、关键指标、架构取舍和优化结果。",
-    "tags": ["Performance", "Incident Review", "Architecture"],
-    "recommendation_reason": "具备一手工程经验和可迁移的问题分析方法，适合作为性能优化和故障复盘参考。",
-    "full_reasoning": "正文包含问题背景、排查路径、方案比较、边界条件和结果验证，不是浅层步骤说明。经验可以迁移到其他高并发服务。"
-  }
+  "decision": "accept",
+  "content_type": "engineering_case",
+  "dimensions": {
+    "领域相关性": "high",
+    "长期价值": "high",
+    "内容深度": "high",
+    "原创性": "high",
+    "可迁移性": "high",
+    "可读性": "high"
+  },
+  "summary": "文章复盘一次线上性能问题，从用户侧延迟、服务端指标和关键链路入手定位瓶颈。作者说明了排查路径、架构取舍和优化后的验证方式，也交代了方案适用的流量与系统边界。",
+  "tags": ["Performance", "Incident Review", "Architecture"],
+  "suggested_tags": [],
+  "recommendation_reason": "推荐收录，因为它不是孤立的调参记录，而是展示了从现象到指标、从假设到验证的完整工程分析过程。读者可以迁移其中的观测指标设计、性能瓶颈定位和方案取舍方法。",
+  "full_reasoning": "正文包含问题背景、排查路径、方案比较、边界条件和结果验证，不是浅层步骤说明。文章有一手工程语境，并能帮助其他高并发服务团队复用类似的分析框架。"
 }

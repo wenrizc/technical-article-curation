@@ -11,6 +11,7 @@ from croniter import CroniterBadDateError, CroniterError, croniter
 
 from tac.application import pipeline
 from tac.application.jobs import JobConflict, JobManager, JobQueueFull, JobTrigger
+from tac.application.tag_cache import TagVocabularyCache
 from tac.infrastructure.db import store as db
 from tac.settings import Settings
 
@@ -60,10 +61,15 @@ class ScheduleDefinition:
 
 
 class SchedulerService:
-    def __init__(self, settings: Settings, job_manager: JobManager) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        job_manager: JobManager,
+        tag_cache: TagVocabularyCache | None = None,
+    ) -> None:
         self.settings = settings
         self.job_manager = job_manager
-        self._schedules = _load_schedules(settings)
+        self._schedules = _load_schedules(settings, tag_cache=tag_cache)
         self._task: asyncio.Task[None] | None = None
         self._last_fired: set[tuple[str, str]] = set()
 
@@ -153,7 +159,11 @@ class SchedulerService:
         raise KeyError(schedule_id)
 
 
-def _load_schedules(settings: Settings) -> list[ScheduleDefinition]:
+def _load_schedules(
+    settings: Settings,
+    *,
+    tag_cache: TagVocabularyCache | None = None,
+) -> list[ScheduleDefinition]:
     if not settings.scheduler_enabled:
         return []
     try:
@@ -166,7 +176,7 @@ def _load_schedules(settings: Settings) -> list[ScheduleDefinition]:
             kind="run",
             cron=CronSchedule.parse(settings.schedule_run_cron),
             timezone=timezone,
-            runner_factory=lambda: lambda: pipeline.run_all(settings),
+            runner_factory=lambda: lambda: pipeline.run_all(settings, tag_cache=tag_cache),
         )
     ]
 

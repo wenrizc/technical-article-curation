@@ -1,6 +1,12 @@
 from concurrent.futures import Future
 
-from tac.application.use_cases.evaluate_articles import evaluate_pending, evaluate_with_ai
+from tac.application.tag_cache import TagVocabularyCache
+from tac.application.use_cases.evaluate_articles import (
+    evaluate_pending,
+    evaluate_with_ai,
+    load_prompt,
+)
+from tac.domain.models import EvaluationResult
 from tac.infrastructure.db import store as db
 from tac.settings import Settings
 
@@ -77,6 +83,7 @@ def test_evaluate_with_ai_uses_openai_sdk(monkeypatch, tmp_path):
         source_name="Source",
         source_tags=["Engineering"],
         content_markdown="# Body",
+        tag_names=["Architecture", "Research"],
     )
 
     assert result.decision.value == "accept"
@@ -86,8 +93,40 @@ def test_evaluate_with_ai_uses_openai_sdk(monkeypatch, tmp_path):
     assert calls["create"]["model"] == "openai/test-model"
     assert calls["create"]["response_format"] == {"type": "json_object"}
     assert calls["create"]["timeout"] == settings.ai_timeout_seconds
+    assert "当前正式标签词库" in calls["create"]["messages"][0]["content"]
+    assert '"Architecture"' in calls["create"]["messages"][0]["content"]
     assert "# Source Name\nSource" in calls["create"]["messages"][1]["content"]
     assert '# Source Tags\n["Engineering"]' in calls["create"]["messages"][1]["content"]
+
+
+def test_load_prompt_injects_current_tag_vocabulary(tmp_path):
+    prompt = tmp_path / "evaluate.md"
+    prompt.write_text("Return JSON only.", encoding="utf-8")
+    few_shots = tmp_path / "few_shots"
+    few_shots.mkdir()
+    settings = Settings(
+        state_db=tmp_path / "state.db",
+        sources_path=tmp_path / "sources.yaml",
+        public_dir=tmp_path / "public",
+        max_retry=3,
+        model="fixture-model",
+        base_url="https://example.invalid/v1",
+        api_key=None,
+        ai_response_path=None,
+        fetch_fixture_path=None,
+        crawler4ai_enabled=False,
+        fetch_delay_seconds=0,
+        evaluation_max_attempts=3,
+        prompt_language="zh-CN",
+        prompt_path=prompt,
+        few_shot_dir=few_shots,
+    )
+
+    content = load_prompt(settings, ["Architecture", "Research"])
+
+    assert "当前正式标签词库" in content
+    assert '"Architecture"' in content
+    assert "`suggested_tags`" in content
 
 
 def test_evaluate_with_ai_retries_invalid_json_with_repair_prompt(monkeypatch, tmp_path):
@@ -331,3 +370,70 @@ def test_evaluate_pending_uses_configured_concurrency(tmp_path, monkeypatch):
 
     assert result["accepted"] == 2
     assert seen["max_workers"] == 5
+
+
+def test_evaluate_pending_uses_tag_cache_snapshot(tmp_path, monkeypatch):
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    article_id, _, _ = db.add_candidate(
+        conn,
+        title="Title",
+        url="https://example.com/article",
+        source_name="s",
+    )
+    db.record_fetch_success(conn, article_id, "# Body", {"crawler": "fixture"})
+    settings = Settings(
+        state_db=tmp_path / "state.db",
+        sources_path=tmp_path / "sources.yaml",
+        public_dir=tmp_path / "public",
+        max_retry=3,
+        model="fixture-model",
+        base_url="https://example.invalid/v1",
+        api_key=None,
+        ai_response_path=None,
+        fetch_fixture_path=None,
+        crawler4ai_enabled=False,
+        fetch_delay_seconds=0,
+        evaluation_max_attempts=3,
+        prompt_language="zh-CN",
+        prompt_path=tmp_path / "evaluate.md",
+        few_shot_dir=tmp_path / "few_shots",
+    )
+    tag_cache = TagVocabularyCache()
+    tag_cache.refresh(conn)
+    seen = {}
+
+    def fake_evaluate_with_ai(*args, **kwargs):
+        seen["tag_names"] = kwargs["tag_names"]
+        return (
+            EvaluationResult.model_validate(
+                {
+                    "decision": "accept",
+                    "content_type": "engineering_case",
+                    "dimensions": {
+                        "领域相关性": "high",
+                        "长期价值": "high",
+                        "内容深度": "high",
+                        "原创性": "medium",
+                        "可迁移性": "high",
+                        "可读性": "high",
+                    },
+                    "summary": "summary",
+                    "tags": ["Architecture"],
+                    "suggested_tags": [],
+                    "recommendation_reason": "reason",
+                    "full_reasoning": "internal reason",
+                }
+            ),
+            "{}",
+        )
+
+    monkeypatch.setattr(
+        "tac.application.use_cases.evaluate_articles.evaluate_with_ai",
+        fake_evaluate_with_ai,
+    )
+
+    result = evaluate_pending(settings, conn, tag_cache=tag_cache)
+
+    assert result["accepted"] == 1
+    assert "Architecture" in seen["tag_names"]

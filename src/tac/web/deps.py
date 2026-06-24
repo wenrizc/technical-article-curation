@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from fastapi import Request
 
 from tac.application.jobs import JobManager
+from tac.application.tag_cache import TagVocabularyCache
 from tac.infrastructure.db import store as db
 from tac.settings import Settings
 
@@ -16,6 +17,10 @@ def settings_from_request(request: Request) -> Settings:
 
 def job_manager_from_request(request: Request) -> JobManager:
     return request.app.state.job_manager
+
+
+def tag_cache_from_request(request: Request) -> TagVocabularyCache:
+    return request.app.state.tag_cache
 
 
 def db_conn(request: Request) -> Iterator[sqlite3.Connection]:

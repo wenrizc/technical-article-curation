@@ -11,6 +11,7 @@
   },
   "summary": "文章复盘生产队列延迟问题，解释指标、取舍和优化方向。",
   "tags": ["Performance", "Incident Review"],
+  "suggested_tags": [],
   "recommendation_reason": "包含真实工程问题、排查过程和可复用的延迟治理思路。",
   "full_reasoning": "正文有生产指标、方案比较和边界条件，满足长期计算机领域参考价值。"
 }

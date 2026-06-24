@@ -13,6 +13,7 @@ from requests import RequestException, get
 
 from .application.jobs import JobManager
 from .application.scheduler import SchedulerService
+from .application.tag_cache import TagVocabularyCache
 from .infrastructure.db import store as db
 from .settings import Settings, get_settings
 from .web.routers import admin, public
@@ -43,10 +44,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        conn = db.connect(settings.state_db, busy_timeout_ms=settings.db_busy_timeout_ms)
         if settings.auto_migrate:
-            conn = db.connect(settings.state_db, busy_timeout_ms=settings.db_busy_timeout_ms)
             try:
                 db.migrate(conn, migrations_dir=settings.migrations_dir)
+                app.state.tag_cache.refresh(conn)
+            finally:
+                conn.close()
+        else:
+            try:
+                app.state.tag_cache.refresh(conn)
             finally:
                 conn.close()
         _check_rsshub(settings)
@@ -56,7 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             db.recover_article_queue(conn)
         finally:
             conn.close()
-        scheduler = SchedulerService(settings, app.state.job_manager)
+        scheduler = SchedulerService(settings, app.state.job_manager, app.state.tag_cache)
         app.state.scheduler = scheduler
         scheduler.start()
         try:
@@ -67,6 +74,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="Technical Article Curation", lifespan=lifespan)
     app.state.settings = settings
     app.state.job_manager = JobManager(settings)
+    app.state.tag_cache = TagVocabularyCache()
     app.state.csrf_token = new_csrf_token()
     app.state.http_semaphore = asyncio.Semaphore(settings.http_max_concurrency)
     app.state.public_http_semaphore = asyncio.Semaphore(settings.http_max_concurrency)

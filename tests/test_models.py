@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -67,6 +70,16 @@ def test_evaluation_result_rejects_removed_confidence_field():
     data = {**VALID, "confidence": "high"}
     with pytest.raises(ValidationError):
         EvaluationResult.model_validate(data)
+
+
+def test_zh_cn_few_shot_outputs_match_pydantic_schema():
+    expected_fields = set(EvaluationResult.model_fields)
+    for path in sorted(Path("prompts/zh-CN/few_shots").glob("*.json")):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+
+        assert set(payload) == expected_fields, path.name
+        result = EvaluationResult.model_validate(payload)
+        assert result.tags, path.name
 
 
 def test_feed_config_validates_direct_url():

@@ -12,7 +12,10 @@ def _connect(tmp_path):
     return conn
 
 
-def _accepted_result() -> EvaluationResult:
+def _accepted_result(
+    tags: list[str] | None = None,
+    suggested_tags: list[str] | None = None,
+) -> EvaluationResult:
     return EvaluationResult.model_validate(
         {
             "decision": "accept",
@@ -26,7 +29,8 @@ def _accepted_result() -> EvaluationResult:
                 "可读性": "high",
             },
             "summary": "摘要",
-            "tags": ["Architecture"],
+            "tags": tags or ["Architecture"],
+            "suggested_tags": suggested_tags or [],
             "recommendation_reason": "推荐理由",
             "full_reasoning": "内部原因",
         }
@@ -161,14 +165,20 @@ def test_evaluation_routes_unknown_tags_to_candidates(tmp_path):
     )
     db.record_fetch_success(conn, article_id, "# Body", {"crawler": "fixture"})
 
-    db.record_evaluation(conn, article_id, _accepted_result(), "fixture-model", "{}")
+    db.record_evaluation(
+        conn,
+        article_id,
+        _accepted_result(["New Niche Tag"]),
+        "fixture-model",
+        "{}",
+    )
 
     public_article = articles.list_public_articles(conn).items[0]
     candidates = tags.list_tag_candidates(conn)
 
     assert public_article["tags"] == []
     assert candidates["total"] == 1
-    assert candidates["items"][0]["suggested_tag"] == "Architecture"
+    assert candidates["items"][0]["suggested_tag"] == "New Niche Tag"
 
 
 def test_approved_tag_candidate_becomes_public_tag(tmp_path):
@@ -177,19 +187,47 @@ def test_approved_tag_candidate_becomes_public_tag(tmp_path):
         conn, title="A", url="https://example.com/a", source_name="s"
     )
     db.record_fetch_success(conn, article_id, "# Body", {"crawler": "fixture"})
-    db.record_evaluation(conn, article_id, _accepted_result(), "fixture-model", "{}")
+    db.record_evaluation(
+        conn,
+        article_id,
+        _accepted_result(["New Niche Tag"]),
+        "fixture-model",
+        "{}",
+    )
     candidate_id = tags.list_tag_candidates(conn)["items"][0]["id"]
 
     tags.approve_candidate(conn, candidate_id)
 
     public_article = articles.list_public_articles(conn).items[0]
-    assert public_article["tags"] == ["Architecture"]
+    assert public_article["tags"] == ["New Niche Tag"]
     assert tags.list_tag_candidates(conn)["total"] == 0
 
 
-def test_active_vocabulary_tag_links_during_evaluation(tmp_path):
+def test_evaluation_routes_suggested_tags_to_candidates(tmp_path):
     conn = _connect(tmp_path)
-    tags.create_tag(conn, name="Architecture")
+    article_id, _, _ = db.add_candidate(
+        conn, title="A", url="https://example.com/a", source_name="s"
+    )
+    db.record_fetch_success(conn, article_id, "# Body", {"crawler": "fixture"})
+
+    db.record_evaluation(
+        conn,
+        article_id,
+        _accepted_result(tags=["Architecture"], suggested_tags=["Queueing Theory"]),
+        "fixture-model",
+        "{}",
+    )
+
+    public_article = articles.list_public_articles(conn).items[0]
+    candidates = tags.list_tag_candidates(conn)
+
+    assert public_article["tags"] == ["Architecture"]
+    assert candidates["total"] == 1
+    assert candidates["items"][0]["suggested_tag"] == "Queueing Theory"
+
+
+def test_seeded_vocabulary_tag_links_during_evaluation(tmp_path):
+    conn = _connect(tmp_path)
     article_id, _, _ = db.add_candidate(
         conn, title="A", url="https://example.com/a", source_name="s"
     )
@@ -200,6 +238,30 @@ def test_active_vocabulary_tag_links_during_evaluation(tmp_path):
     public_article = articles.list_public_articles(conn).items[0]
     assert public_article["tags"] == ["Architecture"]
     assert tags.list_tag_candidates(conn)["total"] == 0
+
+
+def test_prompt_aligned_tag_vocabulary_is_seeded(tmp_path):
+    conn = _connect(tmp_path)
+
+    names = {
+        row["name"]
+        for row in conn.execute(
+            "SELECT name FROM tag_vocabulary WHERE status = 'active'"
+        ).fetchall()
+    }
+
+    assert {
+        "AI",
+        "Architecture",
+        "Computer Systems",
+        "Database",
+        "Engineering",
+        "Incident Review",
+        "Learning Path",
+        "Performance",
+        "Query Optimizer",
+        "Research",
+    }.issubset(names)
 
 
 def test_fetch_evaluation_can_rewrite_current_status(tmp_path):

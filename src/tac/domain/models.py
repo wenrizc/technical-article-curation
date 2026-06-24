@@ -66,6 +66,7 @@ class EvaluationResult(BaseModel):
     dimensions: Dimensions
     summary: str
     tags: list[str]
+    suggested_tags: list[str] = Field(default_factory=list)
     recommendation_reason: str
     full_reasoning: str
 
@@ -84,6 +85,19 @@ class EvaluationResult(BaseModel):
         cleaned = [item.strip() for item in value if item.strip()]
         if not cleaned:
             raise ValueError("tags must not be empty")
+        return cleaned
+
+    @field_validator("suggested_tags")
+    @classmethod
+    def suggested_tags_clean(cls, value: list[str]) -> list[str]:
+        cleaned: list[str] = []
+        seen: set[str] = set()
+        for item in value:
+            name = item.strip()
+            normalized = " ".join(name.lower().split())
+            if name and normalized not in seen:
+                cleaned.append(name)
+                seen.add(normalized)
         return cleaned
 
 
