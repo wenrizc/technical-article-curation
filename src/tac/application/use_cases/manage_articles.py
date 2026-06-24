@@ -468,6 +468,7 @@ def summary(conn: sqlite3.Connection) -> dict[str, int]:
             ArticleStatus.accepted,
             ArticleStatus.rejected,
             ArticleStatus.low_confidence,
+            ArticleStatus.skipped_out_of_range,
         )
     }
     rows = conn.execute("SELECT status, COUNT(*) AS count FROM articles GROUP BY status").fetchall()

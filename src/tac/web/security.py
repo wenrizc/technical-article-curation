@@ -7,7 +7,10 @@ from fastapi import Request
 from fastapi.responses import JSONResponse, Response
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+READ_METHODS = {"GET", "HEAD"}
 LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost", "testclient", "testserver"}
+PUBLIC_CACHE_PATHS = ("/api/public/",)
+PUBLIC_ROOT_PATHS = {"/feed.xml"}
 
 
 class RequestBodyTooLarge(RuntimeError):
@@ -60,6 +63,12 @@ def csrf_allowed(request: Request) -> bool:
     return bool(expected and supplied and supplied == expected)
 
 
+def is_public_read_path(path: str) -> bool:
+    return path in PUBLIC_ROOT_PATHS or any(
+        path.startswith(prefix) for prefix in PUBLIC_CACHE_PATHS
+    )
+
+
 def _content_length(header_value: str | None) -> int | None:
     if header_value is None:
         return None
@@ -91,7 +100,11 @@ async def _buffer_request_body(request: Request, *, max_bytes: int) -> None:
 
 async def guard_request(request: Request, call_next) -> Response:
     settings = request.app.state.settings
-    if not is_local_request(request):
+    path = request.url.path
+    is_public = is_public_read_path(path)
+    if is_public and request.method not in READ_METHODS:
+        return JSONResponse({"detail": "public API is read-only"}, status_code=405)
+    if not is_public and not is_local_request(request):
         return JSONResponse({"detail": "local access only"}, status_code=403)
     try:
         content_length = _content_length(request.headers.get("content-length"))
@@ -99,17 +112,31 @@ async def guard_request(request: Request, call_next) -> Response:
         return JSONResponse({"detail": "invalid content-length"}, status_code=400)
     if content_length and content_length > settings.max_request_body_bytes:
         return JSONResponse({"detail": "request body too large"}, status_code=413)
-    if request.method in WRITE_METHODS and (
-        not same_origin_write_allowed(request) or not csrf_allowed(request)
+    if (
+        not is_public
+        and request.method in WRITE_METHODS
+        and (not same_origin_write_allowed(request) or not csrf_allowed(request))
     ):
         return JSONResponse({"detail": "same-origin CSRF check failed"}, status_code=403)
-    semaphore = request.app.state.http_semaphore
+    semaphore = (
+        getattr(request.app.state, "public_http_semaphore", None)
+        if is_public
+        else request.app.state.http_semaphore
+    )
+    if semaphore is None:
+        semaphore = request.app.state.http_semaphore
     if getattr(semaphore, "_value", 0) <= 0:
         return JSONResponse({"detail": "too many concurrent requests"}, status_code=429)
     async with semaphore:
         try:
             if request.method in WRITE_METHODS:
                 await _buffer_request_body(request, max_bytes=settings.max_request_body_bytes)
-            return await call_next(request)
+            response = await call_next(request)
+            if is_public and path.startswith(PUBLIC_CACHE_PATHS):
+                response.headers.setdefault(
+                    "Cache-Control",
+                    f"public, max-age={settings.public_feed_ttl_minutes * 60}",
+                )
+            return response
         except RequestBodyTooLarge:
             return JSONResponse({"detail": "request body too large"}, status_code=413)

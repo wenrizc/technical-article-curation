@@ -63,6 +63,7 @@ async function loadSummary() {
     ["accepted", "Accepted"],
     ["rejected", "Rejected"],
     ["low_confidence", "Low confidence"],
+    ["skipped_out_of_range", "Out of range"],
     ["fetch_failed", "Fetch failures"],
     ["evaluation_failed", "Evaluation failures"],
   ];
@@ -102,6 +103,7 @@ function renderArticles(page) {
             <button data-action="status" data-status="accepted" data-id="${item.id}">accept</button>
             <button data-action="status" data-status="rejected" data-id="${item.id}">reject</button>
             <button data-action="status" data-status="low_confidence" data-id="${item.id}">low</button>
+            <button data-action="status" data-status="skipped_out_of_range" data-id="${item.id}">skip</button>
           </td>
         </tr>`;
     })

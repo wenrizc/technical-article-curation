@@ -81,25 +81,29 @@ async def _run_guard_request(
     *,
     headers: dict[str, str],
     chunks: list[dict[str, object]],
+    method: str = "POST",
+    path: str = "/api/admin/sources",
+    client_host: str = "testclient",
 ) -> Response:
     app = SimpleNamespace(
         state=SimpleNamespace(
             settings=settings,
             csrf_token="token",
             http_semaphore=asyncio.Semaphore(1),
+            public_http_semaphore=asyncio.Semaphore(1),
         )
     )
     scope = {
         "type": "http",
         "http_version": "1.1",
-        "method": "POST",
+        "method": method,
         "scheme": "http",
-        "path": "/api/admin/sources",
-        "raw_path": b"/api/admin/sources",
+        "path": path,
+        "raw_path": path.encode(),
         "query_string": b"",
         "root_path": "",
         "headers": [(key.lower().encode(), value.encode()) for key, value in headers.items()],
-        "client": ("testclient", 1234),
+        "client": (client_host, 1234),
         "server": ("testserver", 80),
         "app": app,
     }
@@ -211,6 +215,58 @@ def test_request_body_too_large_returns_413(tmp_path):
         )
 
     assert response.status_code == 413
+
+
+def test_public_read_guard_allows_remote_clients(tmp_path):
+    settings = _settings(tmp_path)
+
+    response = asyncio.run(
+        _run_guard_request(
+            settings,
+            method="GET",
+            path="/api/public/index.json",
+            headers={"host": "curation.example"},
+            chunks=[{"type": "http.request", "body": b"", "more_body": False}],
+            client_host="203.0.113.10",
+        )
+    )
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "public, max-age=300"
+
+
+def test_admin_guard_still_blocks_remote_clients(tmp_path):
+    settings = _settings(tmp_path)
+
+    response = asyncio.run(
+        _run_guard_request(
+            settings,
+            method="GET",
+            path="/api/admin/summary",
+            headers={"host": "curation.example"},
+            chunks=[{"type": "http.request", "body": b"", "more_body": False}],
+            client_host="203.0.113.10",
+        )
+    )
+
+    assert response.status_code == 403
+
+
+def test_public_write_guard_returns_405(tmp_path):
+    settings = _settings(tmp_path)
+
+    response = asyncio.run(
+        _run_guard_request(
+            settings,
+            method="POST",
+            path="/api/public/index.json",
+            headers={"host": "curation.example"},
+            chunks=[{"type": "http.request", "body": b"{}", "more_body": False}],
+            client_host="203.0.113.10",
+        )
+    )
+
+    assert response.status_code == 405
 
 
 def test_request_body_too_large_without_content_length_returns_413(tmp_path):

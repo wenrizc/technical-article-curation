@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from tac.application.use_cases.evaluate_articles import evaluate_pending
 from tac.application.use_cases.fetch_articles import (
     FetchError,
     FetchResult,
@@ -256,8 +257,10 @@ def test_fetch_pending_skips_out_of_range_after_page_date_extraction(tmp_path, m
 
     assert result["skipped"] == 1
     assert article["published_at"] == "2025-06-01T00:00:00Z"
+    assert article["status"] == "skipped_out_of_range"
     assert queue["status"] == "skipped_out_of_range"
     assert evaluate_queue_count == 0
+    assert evaluate_pending(settings, conn)["attempted"] == 0
 
 
 def test_fetch_pending_uses_configured_concurrency(tmp_path, monkeypatch):

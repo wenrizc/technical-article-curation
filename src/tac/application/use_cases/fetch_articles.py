@@ -353,12 +353,14 @@ def fetch_pending(
                 article = db.get_article(conn, article_id)
                 time_range = range_by_article_id.get(article_id, TimeRange())
                 if article and not time_range.contains(article["published_at"]):
+                    error_message = "published_at is outside requested range"
+                    db.mark_article_skipped_out_of_range(conn, article_id, error_message)
                     if queue_id is not None:
                         db.finish_queue_item(
                             conn,
                             queue_id,
                             status="skipped_out_of_range",
-                            error="published_at is outside requested range",
+                            error=error_message,
                         )
                     skipped += 1
                     continue

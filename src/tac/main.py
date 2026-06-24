@@ -69,6 +69,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.job_manager = JobManager(settings)
     app.state.csrf_token = new_csrf_token()
     app.state.http_semaphore = asyncio.Semaphore(settings.http_max_concurrency)
+    app.state.public_http_semaphore = asyncio.Semaphore(settings.http_max_concurrency)
 
     app.middleware("http")(guard_request)
     app.include_router(admin.router)

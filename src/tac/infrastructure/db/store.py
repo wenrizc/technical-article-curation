@@ -527,6 +527,21 @@ def record_failure(conn: sqlite3.Connection, article_id: int, error: str) -> Non
     conn.commit()
 
 
+def mark_article_skipped_out_of_range(
+    conn: sqlite3.Connection, article_id: int, error: str
+) -> None:
+    now = utc_now_iso()
+    conn.execute(
+        """
+        UPDATE articles
+        SET status = ?, updated_at = ?, error = ?
+        WHERE id = ?
+        """,
+        (ArticleStatus.skipped_out_of_range.value, now, error, article_id),
+    )
+    conn.commit()
+
+
 def record_evaluation_failure(
     conn: sqlite3.Connection,
     article_id: int,
