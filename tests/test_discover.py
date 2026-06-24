@@ -34,6 +34,7 @@ sources:
         prompt_language="zh-CN",
         prompt_path=tmp_path / "evaluate.md",
         few_shot_dir=tmp_path / "few_shots",
+        discover_since_days=None,
     )
 
 

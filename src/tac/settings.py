@@ -30,7 +30,7 @@ class Settings:
     fetch_max_concurrency: int = 1
     evaluate_max_concurrency: int = 1
     discover_max_concurrency: int = 2
-    discover_since_days: int | None = None
+    discover_since_days: int | None = 1
     discover_since: str | None = None
     discover_until: str | None = None
     max_request_body_bytes: int = 1_048_576
@@ -76,9 +76,13 @@ def _int_from_env(name: str, default: int, *, minimum: int = 0) -> int:
     return value
 
 
-def _optional_int_from_env(name: str, *, minimum: int = 0) -> int | None:
+def _optional_int_from_env(
+    name: str, *, minimum: int = 0, default: int | None = None
+) -> int | None:
     raw = os.environ.get(name)
-    if raw is None or not raw.strip():
+    if raw is None:
+        return default
+    if not raw.strip():
         return None
     value = int(raw)
     if value < minimum:
@@ -141,7 +145,9 @@ def get_settings() -> Settings:
         fetch_max_concurrency=_int_from_env("TAC_FETCH_MAX_CONCURRENCY", 1, minimum=1),
         evaluate_max_concurrency=_int_from_env("TAC_EVALUATE_MAX_CONCURRENCY", 1, minimum=1),
         discover_max_concurrency=_int_from_env("TAC_DISCOVER_MAX_CONCURRENCY", 2, minimum=1),
-        discover_since_days=_optional_int_from_env("TAC_DISCOVER_SINCE_DAYS", minimum=1),
+        discover_since_days=_optional_int_from_env(
+            "TAC_DISCOVER_SINCE_DAYS", minimum=1, default=1
+        ),
         discover_since=os.environ.get("TAC_DISCOVER_SINCE"),
         discover_until=os.environ.get("TAC_DISCOVER_UNTIL"),
         max_request_body_bytes=_int_from_env("TAC_MAX_REQUEST_BODY_BYTES", 1_048_576, minimum=1),

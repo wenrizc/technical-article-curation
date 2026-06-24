@@ -158,6 +158,9 @@ uv run uvicorn tac.main:app --host 127.0.0.1 --port 1104 --reload
 - `TAC_FETCH_MAX_CONCURRENCY`：阶段内文章抓取并发，默认 `1`。
 - `TAC_EVALUATE_MAX_CONCURRENCY`：阶段内 AI 评估并发，默认 `1`。
 - `TAC_DISCOVER_MAX_CONCURRENCY`：阶段内 RSS 发现并发，默认 `2`。
+- `TAC_DISCOVER_SINCE_DAYS`：发现任务默认只处理最近 N 天内发布的文章，默认 `1`；设为空字符串可关闭默认窗口。
+- `TAC_DISCOVER_SINCE`：发现任务默认起始发布时间，支持 ISO 日期或时间，例如 `2025-06-23`。
+- `TAC_DISCOVER_UNTIL`：发现任务默认结束发布时间，支持 ISO 日期或时间；日期形式按当天结束处理。
 - `TAC_MAX_REQUEST_BODY_BYTES`：写请求体大小限制，默认 `1048576`。
 - `TAC_FETCH_TIMEOUT_SECONDS`：单篇文章抓取超时，默认 `90`。
 - `TAC_AI_TIMEOUT_SECONDS`：AI 请求超时，默认 `90`。

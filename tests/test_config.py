@@ -52,6 +52,9 @@ def test_admin_runtime_settings_defaults(monkeypatch):
         "TAC_FETCH_MAX_CONCURRENCY",
         "TAC_EVALUATE_MAX_CONCURRENCY",
         "TAC_DISCOVER_MAX_CONCURRENCY",
+        "TAC_DISCOVER_SINCE_DAYS",
+        "TAC_DISCOVER_SINCE",
+        "TAC_DISCOVER_UNTIL",
         "TAC_MAX_REQUEST_BODY_BYTES",
         "TAC_FETCH_TIMEOUT_SECONDS",
         "TAC_AI_TIMEOUT_SECONDS",
@@ -85,6 +88,9 @@ def test_admin_runtime_settings_defaults(monkeypatch):
     assert settings.fetch_max_concurrency == 1
     assert settings.evaluate_max_concurrency == 1
     assert settings.discover_max_concurrency == 2
+    assert settings.discover_since_days == 1
+    assert settings.discover_since is None
+    assert settings.discover_until is None
     assert settings.max_request_body_bytes == 1_048_576
     assert settings.fetch_timeout_seconds == 90
     assert settings.ai_timeout_seconds == 90
@@ -112,4 +118,19 @@ def test_admin_runtime_settings_reject_invalid_values(monkeypatch):
     monkeypatch.setenv("TAC_HTTP_MAX_CONCURRENCY", "0")
 
     with pytest.raises(ValueError, match="TAC_HTTP_MAX_CONCURRENCY"):
+        get_settings()
+
+
+def test_discover_since_days_empty_string_disables_default_window(monkeypatch):
+    monkeypatch.setenv("TAC_DISCOVER_SINCE_DAYS", "")
+
+    settings = get_settings()
+
+    assert settings.discover_since_days is None
+
+
+def test_discover_since_days_rejects_zero(monkeypatch):
+    monkeypatch.setenv("TAC_DISCOVER_SINCE_DAYS", "0")
+
+    with pytest.raises(ValueError, match="TAC_DISCOVER_SINCE_DAYS"):
         get_settings()
