@@ -63,19 +63,10 @@ def _accepted_result(
         {
             "decision": "accept",
             "content_type": "engineering_case",
-            "dimensions": {
-                "领域相关性": "high",
-                "长期价值": "high",
-                "内容深度": "high",
-                "原创性": "medium",
-                "可迁移性": "high",
-                "可读性": "high",
-            },
             "summary": "摘要",
             "tags": tags or ["Architecture"],
             "suggested_tags": suggested_tags or [],
             "recommendation_reason": "推荐理由",
-            "full_reasoning": "内部原因",
         }
     )
 

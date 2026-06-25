@@ -81,8 +81,6 @@ def article_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
         result["source_tags"] = json.loads(result["source_tags"])
     if "tags" in result and isinstance(result["tags"], str) and result["tags"]:
         result["tags"] = json.loads(result["tags"])
-    if "dimensions" in result and isinstance(result["dimensions"], str) and result["dimensions"]:
-        result["dimensions"] = json.loads(result["dimensions"])
     if "crawler_metadata" in result and isinstance(result["crawler_metadata"], str):
         result["crawler_metadata"] = json.loads(result["crawler_metadata"] or "{}")
     if "source_content_metadata" in result and isinstance(result["source_content_metadata"], str):
@@ -286,13 +284,7 @@ def list_public_articles(
                 WHERE e.article_id = a.id
                 ORDER BY e.id DESC
                 LIMIT 1
-            ) AS recommendation_reason,
-            (
-                SELECT e.dimensions FROM evaluations e
-                WHERE e.article_id = a.id
-                ORDER BY e.id DESC
-                LIMIT 1
-            ) AS dimensions
+            ) AS recommendation_reason
         FROM articles a
         {where_sql}
         ORDER BY COALESCE(a.published_at, a.collected_at, a.updated_at, a.created_at) DESC, a.id DESC
@@ -347,13 +339,7 @@ def list_all_public_articles(
                 WHERE e.article_id = a.id
                 ORDER BY e.id DESC
                 LIMIT 1
-            ) AS recommendation_reason,
-            (
-                SELECT e.dimensions FROM evaluations e
-                WHERE e.article_id = a.id
-                ORDER BY e.id DESC
-                LIMIT 1
-            ) AS dimensions
+            ) AS recommendation_reason
         FROM articles a
         {where_sql}
         ORDER BY COALESCE(a.published_at, a.collected_at, a.updated_at, a.created_at) DESC, a.id DESC
@@ -423,8 +409,7 @@ def get_public_article_detail(conn: sqlite3.Connection, slug: str) -> dict[str, 
             e.content_type,
 {PUBLIC_TAGS_SQL}
             AS tags,
-            e.recommendation_reason,
-            e.dimensions
+            e.recommendation_reason
         FROM articles a
         LEFT JOIN fetches f ON f.article_id = a.id
           AND f.id = (

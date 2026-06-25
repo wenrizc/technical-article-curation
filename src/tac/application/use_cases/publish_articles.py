@@ -35,9 +35,7 @@ def _source_block(article: sqlite3.Row, fetched_at: str) -> str:
     )
 
 
-def _public_record(
-    article: sqlite3.Row, tags: list[str], dimensions: dict[str, object]
-) -> dict[str, object]:
+def _public_record(article: sqlite3.Row, tags: list[str]) -> dict[str, object]:
     slug = article["slug"]
     record = {
         "slug": slug,
@@ -50,7 +48,6 @@ def _public_record(
         "summary": article["summary"],
         "tags": tags,
         "recommendation_reason": article["recommendation_reason"],
-        "dimensions": dimensions,
         "markdown_path": f"articles/{slug}.md",
     }
     return record
@@ -64,8 +61,7 @@ def publish_public(settings: Settings, conn: sqlite3.Connection) -> dict[str, in
     expected_files: set[Path] = set()
     for article in db.accepted_articles_for_publish(conn):
         tags = json.loads(article["tags"])
-        dimensions = json.loads(article["dimensions"])
-        record = _public_record(article, tags, dimensions)
+        record = _public_record(article, tags)
         records.append(record)
         slug = article["slug"]
         md_path = articles_dir / f"{slug}.md"

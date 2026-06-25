@@ -42,18 +42,9 @@ def test_evaluate_with_ai_uses_openai_sdk(monkeypatch, tmp_path):
         content = """{
           "decision": "accept",
           "content_type": "engineering_case",
-          "dimensions": {
-            "领域相关性": "high",
-            "长期价值": "high",
-            "内容深度": "high",
-            "原创性": "medium",
-            "可迁移性": "high",
-            "可读性": "high"
-          },
           "summary": "summary",
           "tags": ["Architecture"],
-          "recommendation_reason": "reason",
-          "full_reasoning": "internal reason"
+          "recommendation_reason": "reason"
         }"""
 
     class FakeChoice:
@@ -168,18 +159,9 @@ def test_evaluate_with_ai_retries_invalid_json_with_repair_prompt(monkeypatch, t
             """{
               "decision": "accept",
               "content_type": "engineering_case",
-              "dimensions": {
-                "领域相关性": "high",
-                "长期价值": "high",
-                "内容深度": "high",
-                "原创性": "medium",
-                "可迁移性": "high",
-                "可读性": "high"
-              },
               "summary": "summary",
               "tags": ["Architecture"],
-              "recommendation_reason": "reason",
-              "full_reasoning": "internal reason"
+              "recommendation_reason": "reason"
             }""",
         ]
     )
@@ -254,18 +236,9 @@ def test_evaluate_with_ai_repeats_original_request_after_api_failure(monkeypatch
         content = """{
           "decision": "reject",
           "content_type": "technical_article",
-          "dimensions": {
-            "领域相关性": "medium",
-            "长期价值": "low",
-            "内容深度": "low",
-            "原创性": "low",
-            "可迁移性": "low",
-            "可读性": "medium"
-          },
           "summary": "summary",
           "tags": ["News"],
-          "recommendation_reason": "reason",
-          "full_reasoning": "internal reason"
+          "recommendation_reason": "reason"
         }"""
 
     class FakeChoice:
@@ -312,18 +285,9 @@ def test_evaluate_pending_uses_configured_concurrency(tmp_path, monkeypatch):
         """{
           "decision": "accept",
           "content_type": "engineering_case",
-          "dimensions": {
-            "领域相关性": "high",
-            "长期价值": "high",
-            "内容深度": "high",
-            "原创性": "medium",
-            "可迁移性": "high",
-            "可读性": "high"
-          },
           "summary": "summary",
           "tags": ["Architecture"],
-          "recommendation_reason": "reason",
-          "full_reasoning": "internal reason"
+          "recommendation_reason": "reason"
         }""",
         encoding="utf-8",
     )
@@ -418,19 +382,10 @@ def test_evaluate_pending_uses_tag_cache_snapshot(tmp_path, monkeypatch):
                 {
                     "decision": "accept",
                     "content_type": "engineering_case",
-                    "dimensions": {
-                        "领域相关性": "high",
-                        "长期价值": "high",
-                        "内容深度": "high",
-                        "原创性": "medium",
-                        "可迁移性": "high",
-                        "可读性": "high",
-                    },
                     "summary": "summary",
                     "tags": ["Architecture"],
                     "suggested_tags": [],
                     "recommendation_reason": "reason",
-                    "full_reasoning": "internal reason",
                 }
             ),
             "{}",

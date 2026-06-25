@@ -33,12 +33,6 @@ class Decision(str, Enum):
     low_confidence = "low_confidence"
 
 
-class Level(str, Enum):
-    high = "high"
-    medium = "medium"
-    low = "low"
-
-
 class ContentType(str, Enum):
     technical_article = "technical_article"
     engineering_case = "engineering_case"
@@ -50,30 +44,17 @@ class ContentType(str, Enum):
     tooling_note = "tooling_note"
 
 
-class Dimensions(BaseModel):
-    domain_relevance: Level = Field(alias="领域相关性")
-    long_term_value: Level = Field(alias="长期价值")
-    content_depth: Level = Field(alias="内容深度")
-    originality: Level = Field(alias="原创性")
-    transferability: Level = Field(alias="可迁移性")
-    readability: Level = Field(alias="可读性")
-
-    model_config = {"populate_by_name": True, "extra": "forbid"}
-
-
 class EvaluationResult(BaseModel):
     decision: Decision
     content_type: ContentType
-    dimensions: Dimensions
     summary: str
     tags: list[str]
     suggested_tags: list[str] = Field(default_factory=list)
     recommendation_reason: str
-    full_reasoning: str
 
     model_config = {"extra": "forbid"}
 
-    @field_validator("summary", "recommendation_reason", "full_reasoning")
+    @field_validator("summary", "recommendation_reason")
     @classmethod
     def non_empty(cls, value: str) -> str:
         if not value.strip():

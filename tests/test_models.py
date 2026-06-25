@@ -10,18 +10,9 @@ from tac.domain.models import EvaluationResult, FeedConfig, ManualUrl, SourceCon
 VALID = {
     "decision": "accept",
     "content_type": "research_article",
-    "dimensions": {
-        "领域相关性": "high",
-        "长期价值": "high",
-        "内容深度": "high",
-        "原创性": "medium",
-        "可迁移性": "high",
-        "可读性": "high",
-    },
     "summary": "一篇有长期参考价值的文章。",
     "tags": ["Architecture"],
     "recommendation_reason": "解释了取舍和边界。",
-    "full_reasoning": "内部判断依据。",
 }
 
 
@@ -29,7 +20,7 @@ def test_evaluation_result_accepts_strict_schema():
     result = EvaluationResult.model_validate(VALID)
     assert result.decision.value == "accept"
     assert result.content_type.value == "research_article"
-    assert result.dimensions.long_term_value.value == "high"
+    assert result.tags == ["Architecture"]
 
 
 def test_evaluation_result_rejects_missing_content_type():
@@ -45,15 +36,12 @@ def test_evaluation_result_rejects_invalid_content_type():
         EvaluationResult.model_validate(data)
 
 
-def test_evaluation_result_rejects_old_dimensions():
+def test_evaluation_result_rejects_removed_dimensions_field():
     data = {
         **VALID,
         "dimensions": {
-            "工程价值": "high",
-            "技术深度": "high",
-            "原创性": "medium",
-            "可复用性": "high",
-            "可读性": "high",
+            "领域相关性": "high",
+            "长期价值": "high",
         },
     }
     with pytest.raises(ValidationError):
@@ -62,7 +50,13 @@ def test_evaluation_result_rejects_old_dimensions():
 
 def test_evaluation_result_rejects_missing_field():
     data = dict(VALID)
-    data.pop("full_reasoning")
+    data.pop("recommendation_reason")
+    with pytest.raises(ValidationError):
+        EvaluationResult.model_validate(data)
+
+
+def test_evaluation_result_rejects_removed_full_reasoning_field():
+    data = {**VALID, "full_reasoning": "内部判断依据。"}
     with pytest.raises(ValidationError):
         EvaluationResult.model_validate(data)
 

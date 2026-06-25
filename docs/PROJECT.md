@@ -205,12 +205,10 @@ AI 响应必须通过以下严格 schema 校验：
 
 - `decision`：收录、拒收或低置信度。
 - `content_type`：技术文章、工程实践、科研议题、科研思考、学习路线、个人心得、职业经验或工具笔记。
-- `dimensions`：领域相关性、长期价值、内容深度、原创性、可迁移性和可读性。
 - `summary`：公开摘要。
 - `tags`：从正式词库中选择的公开标签。
 - `suggested_tags`：AI 希望新增到词库的标签建议。
 - `recommendation_reason`：公开推荐理由。
-- `full_reasoning`：内部完整判断依据，不公开发布。
 
 只有 `decision=accept` 的文章会自动收录。
 
@@ -220,6 +218,8 @@ AI 响应必须通过以下严格 schema 校验：
 
 ## 存储
 
+提示词仍会要求模型参考领域相关性、长期价值、内容深度、原创性、可迁移性和可读性做内部判断，但这些维度不再作为 JSON 字段写入或发布。
+
 内部状态存储在 SQLite 中，默认路径为 `data/state.db`。
 
 迁移文件位于 `migrations/*.sql`。当前没有独立迁移任务入口；服务启动和每次流水线阶段运行前会自动执行未应用迁移。
@@ -228,7 +228,7 @@ AI 响应必须通过以下严格 schema 校验：
 
 - `articles`：文章身份、来源、归一化 URL、slug、状态、重试次数和时间戳。
 - `fetches`：抓取状态、Markdown 正文、错误和抓取元数据。
-- `evaluations`：AI 判断、维度、公开字段、内部判断依据、模型和原始 JSON。
+- `evaluations`：AI 判断、内容类型、公开字段、模型和原始 JSON。
 - `tag_vocabulary`：人工维护的正式标签词库，active 标签会注入评估提示词并用于公开发布。
 - `tag_candidates`：AI 建议或误放入 `tags` 的词库外标签，等待管理端人工审核。
 - `source_state`：最近 RSS 信源检查状态和条件请求字段。
@@ -259,10 +259,9 @@ SQLite 是内部事实来源。公开 JSON 和 Markdown 是派生产物。
 - `summary`
 - `tags`
 - `recommendation_reason`
-- `dimensions`
 - `markdown_path`
 
-公开 JSON 不得包含 `status`、`full_reasoning` 等内部字段。
+公开 JSON 不得包含 `status` 等内部字段。
 
 Markdown 文件包含最小 frontmatter，并在正文顶部显示来源名称、原文链接和抓取时间。
 

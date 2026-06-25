@@ -1,17 +1,8 @@
 {
   "decision": "accept",
   "content_type": "engineering_case",
-  "dimensions": {
-    "领域相关性": "high",
-    "长期价值": "high",
-    "内容深度": "high",
-    "原创性": "high",
-    "可迁移性": "high",
-    "可读性": "high"
-  },
-  "summary": "文章复盘生产队列延迟问题，解释指标、取舍和优化方向。",
+  "summary": "文章复盘一次生产队列延迟升高问题，从端到端延迟拆解、任务类型聚合和重试行为入手定位瓶颈。作者说明了重试放大如何挤占正常任务消费窗口，并给出独立重试队列、并发隔离和队列年龄监控等治理手段。",
   "tags": ["Performance", "Incident Review"],
   "suggested_tags": [],
-  "recommendation_reason": "包含真实工程问题、排查过程和可复用的延迟治理思路。",
-  "full_reasoning": "正文有生产指标、方案比较和边界条件，满足长期计算机领域参考价值。"
+  "recommendation_reason": "推荐收录，因为它有明确的生产背景、指标证据和从假设到验证的排查过程。读者可以迁移其中的队列观测、重试隔离和容量治理方法，用于类似异步系统的稳定性改进。"
 }

@@ -32,18 +32,9 @@ def _accepted_result() -> EvaluationResult:
         {
             "decision": "accept",
             "content_type": "engineering_case",
-            "dimensions": {
-                "领域相关性": "high",
-                "长期价值": "high",
-                "内容深度": "high",
-                "原创性": "medium",
-                "可迁移性": "high",
-                "可读性": "high",
-            },
             "summary": "摘要",
             "tags": ["Architecture"],
             "recommendation_reason": "推荐理由",
-            "full_reasoning": "内部原因",
         }
     )
 
@@ -94,4 +85,5 @@ def test_publish_writes_markdown_for_accepted_article(tmp_path):
     assert md_path.exists()
     assert json_path.exists()
     assert record["content_type"] == "engineering_case"
+    assert "dimensions" not in record
     assert record["markdown_path"] == f"articles/{article['slug']}.md"

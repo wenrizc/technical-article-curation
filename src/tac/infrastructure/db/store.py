@@ -615,21 +615,19 @@ def record_evaluation(
     cur = conn.execute(
         """
         INSERT INTO evaluations(
-            article_id, evaluated_at, decision, content_type, dimensions, summary,
-            tags, recommendation_reason, full_reasoning, model_name, raw_json
+            article_id, evaluated_at, decision, content_type, summary,
+            tags, recommendation_reason, model_name, raw_json
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             article_id,
             now,
             result.decision.value,
             result.content_type.value,
-            result.dimensions.model_dump_json(by_alias=True),
             result.summary,
             json.dumps(result.tags, ensure_ascii=False),
             result.recommendation_reason,
-            result.full_reasoning,
             model_name,
             raw_json,
         ),
@@ -780,8 +778,7 @@ def accepted_articles_for_publish(conn: sqlite3.Connection) -> list[sqlite3.Row]
                     ORDER BY tv.name COLLATE NOCASE
                 )
             ), '[]') AS tags,
-            e.recommendation_reason,
-            e.dimensions
+            e.recommendation_reason
         FROM articles a
         JOIN fetches f ON f.article_id = a.id
         JOIN evaluations e ON e.article_id = a.id

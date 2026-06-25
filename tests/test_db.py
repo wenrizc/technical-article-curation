@@ -23,19 +23,10 @@ def _accepted_result(
         {
             "decision": "accept",
             "content_type": "engineering_case",
-            "dimensions": {
-                "领域相关性": "high",
-                "长期价值": "high",
-                "内容深度": "high",
-                "原创性": "medium",
-                "可迁移性": "high",
-                "可读性": "high",
-            },
             "summary": "摘要",
             "tags": tags or ["Architecture"],
             "suggested_tags": suggested_tags or [],
             "recommendation_reason": "推荐理由",
-            "full_reasoning": "内部原因",
         }
     )
 
@@ -534,6 +525,14 @@ def test_destructive_migration_rebuilds_legacy_articles_schema(tmp_path):
         Path("migrations/012_drop_article_publish_policy.sql").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
+    (migrations_dir / "014_drop_evaluation_dimensions.sql").write_text(
+        Path("migrations/014_drop_evaluation_dimensions.sql").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    (migrations_dir / "015_drop_evaluation_full_reasoning.sql").write_text(
+        Path("migrations/015_drop_evaluation_full_reasoning.sql").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
 
     db.migrate(conn, migrations_dir=migrations_dir)
     columns = [row["name"] for row in conn.execute("PRAGMA table_info(articles)").fetchall()]
@@ -557,6 +556,8 @@ def test_destructive_migration_rebuilds_legacy_articles_schema(tmp_path):
     assert "normalized_title" not in columns
     assert "duplicate_of" not in columns
     assert "content_type" in evaluation_columns
+    assert "dimensions" not in evaluation_columns
+    assert "full_reasoning" not in evaluation_columns
     assert conn.execute("SELECT COUNT(*) FROM source_state").fetchone()[0] == 0
     assert conn.execute("SELECT COUNT(*) FROM article_queue").fetchone()[0] == 0
 
@@ -640,4 +641,169 @@ def test_drop_evaluation_confidence_migration_preserves_rows(tmp_path):
     assert applied == ["004_drop_evaluation_confidence"]
     assert "confidence" not in columns
     assert row["decision"] == "accept"
+    assert row["summary"] == "摘要"
+
+
+def test_drop_evaluation_dimensions_migration_preserves_rows(tmp_path):
+    conn = db.connect(tmp_path / "state.db")
+    conn.executescript(
+        """
+        CREATE TABLE schema_migrations (
+            version TEXT PRIMARY KEY,
+            applied_at TEXT NOT NULL
+        );
+        INSERT INTO schema_migrations(version, applied_at)
+        VALUES ('013_unique_article_normalized_url', '2026-01-01T00:00:00Z');
+
+        CREATE TABLE articles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_name TEXT NOT NULL,
+            title TEXT NOT NULL,
+            url TEXT NOT NULL,
+            normalized_url TEXT NOT NULL,
+            slug TEXT,
+            status TEXT NOT NULL,
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            published_at TEXT,
+            collected_at TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            error TEXT,
+            source_tags TEXT NOT NULL DEFAULT '[]',
+            source_content_markdown TEXT,
+            source_content_metadata TEXT NOT NULL DEFAULT '{}'
+        );
+
+        CREATE TABLE evaluations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            article_id INTEGER NOT NULL,
+            evaluated_at TEXT NOT NULL,
+            decision TEXT NOT NULL,
+            content_type TEXT NOT NULL,
+            dimensions TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            tags TEXT NOT NULL,
+            recommendation_reason TEXT NOT NULL,
+            full_reasoning TEXT NOT NULL,
+            model_name TEXT NOT NULL,
+            raw_json TEXT NOT NULL,
+            FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
+        );
+        CREATE INDEX idx_evaluations_article_id ON evaluations(article_id);
+
+        INSERT INTO articles(
+            source_name, title, url, normalized_url, status, created_at, updated_at
+        )
+        VALUES (
+            's', 'A', 'https://example.com/a', 'https://example.com/a',
+            'accepted', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'
+        );
+        INSERT INTO evaluations(
+            article_id, evaluated_at, decision, content_type, dimensions, summary,
+            tags, recommendation_reason, full_reasoning, model_name, raw_json
+        )
+        VALUES (
+            1, '2026-01-01T00:00:00Z', 'accept', 'engineering_case', '{}', '摘要',
+            '["Architecture"]', '理由', '内部原因', 'fixture-model', '{}'
+        );
+        """
+    )
+    conn.commit()
+    migrations_dir = tmp_path / "migrations"
+    migrations_dir.mkdir()
+    (migrations_dir / "014_drop_evaluation_dimensions.sql").write_text(
+        Path("migrations/014_drop_evaluation_dimensions.sql").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    applied = db.migrate(conn, migrations_dir=migrations_dir)
+
+    columns = [row["name"] for row in conn.execute("PRAGMA table_info(evaluations)").fetchall()]
+    row = conn.execute("SELECT decision, content_type, summary FROM evaluations").fetchone()
+    assert applied == ["014_drop_evaluation_dimensions"]
+    assert "dimensions" not in columns
+    assert row["decision"] == "accept"
+    assert row["content_type"] == "engineering_case"
+    assert row["summary"] == "摘要"
+
+
+def test_drop_evaluation_full_reasoning_migration_preserves_rows(tmp_path):
+    conn = db.connect(tmp_path / "state.db")
+    conn.executescript(
+        """
+        CREATE TABLE schema_migrations (
+            version TEXT PRIMARY KEY,
+            applied_at TEXT NOT NULL
+        );
+        INSERT INTO schema_migrations(version, applied_at)
+        VALUES ('014_drop_evaluation_dimensions', '2026-01-01T00:00:00Z');
+
+        CREATE TABLE articles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_name TEXT NOT NULL,
+            title TEXT NOT NULL,
+            url TEXT NOT NULL,
+            normalized_url TEXT NOT NULL,
+            slug TEXT,
+            status TEXT NOT NULL,
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            published_at TEXT,
+            collected_at TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            error TEXT,
+            source_tags TEXT NOT NULL DEFAULT '[]',
+            source_content_markdown TEXT,
+            source_content_metadata TEXT NOT NULL DEFAULT '{}'
+        );
+
+        CREATE TABLE evaluations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            article_id INTEGER NOT NULL,
+            evaluated_at TEXT NOT NULL,
+            decision TEXT NOT NULL,
+            content_type TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            tags TEXT NOT NULL,
+            recommendation_reason TEXT NOT NULL,
+            full_reasoning TEXT NOT NULL,
+            model_name TEXT NOT NULL,
+            raw_json TEXT NOT NULL,
+            FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
+        );
+        CREATE INDEX idx_evaluations_article_id ON evaluations(article_id);
+
+        INSERT INTO articles(
+            source_name, title, url, normalized_url, status, created_at, updated_at
+        )
+        VALUES (
+            's', 'A', 'https://example.com/a', 'https://example.com/a',
+            'accepted', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'
+        );
+        INSERT INTO evaluations(
+            article_id, evaluated_at, decision, content_type, summary,
+            tags, recommendation_reason, full_reasoning, model_name, raw_json
+        )
+        VALUES (
+            1, '2026-01-01T00:00:00Z', 'accept', 'engineering_case', '摘要',
+            '["Architecture"]', '理由', '内部原因', 'fixture-model', '{}'
+        );
+        """
+    )
+    conn.commit()
+    migrations_dir = tmp_path / "migrations"
+    migrations_dir.mkdir()
+    (migrations_dir / "015_drop_evaluation_full_reasoning.sql").write_text(
+        Path("migrations/015_drop_evaluation_full_reasoning.sql").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    applied = db.migrate(conn, migrations_dir=migrations_dir)
+
+    columns = [row["name"] for row in conn.execute("PRAGMA table_info(evaluations)").fetchall()]
+    row = conn.execute("SELECT decision, content_type, summary FROM evaluations").fetchone()
+    assert applied == ["015_drop_evaluation_full_reasoning"]
+    assert "full_reasoning" not in columns
+    assert row["decision"] == "accept"
+    assert row["content_type"] == "engineering_case"
     assert row["summary"] == "摘要"
