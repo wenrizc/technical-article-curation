@@ -1385,4 +1385,316 @@ sources:
   feed:
     type: rsshub
     route: /zhihu/posts/people/wang-yi-yun-yi-dun
+- name: 字节跳动技术团队（掘金）
+  site_url: https://juejin.cn/user/1838039172387262
+  enabled: true
+  display: default
+  tags: [China, Engineering, Infrastructure, Database]
+  feed:
+    type: rsshub
+    route: /juejin/posts/1838039172387262
+- name: TiDB 社区博客 - 技术解读
+  site_url: https://tidb.net/blog
+  enabled: true
+  display: default
+  tags: [China, Database, Distributed Systems, Engineering]
+  feed:
+    type: rsshub
+    route: /tidb/blog/c/principle-interpretation
+- name: TiDB 社区博客 - 实践案例
+  site_url: https://tidb.net/blog
+  enabled: true
+  display: default
+  tags: [China, Database, Distributed Systems, Engineering]
+  feed:
+    type: rsshub
+    route: /tidb/blog/c/practical-case
+- name: OceanBase 社区博客
+  site_url: https://www.oceanbase.com/blog/engineering
+  enabled: true
+  display: default
+  tags: [China, Database, Distributed Systems, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/oceanbase/blog
+- name: JuiceFS 工程技术
+  site_url: https://juicefs.com/en/blog/engineering/
+  enabled: true
+  display: default
+  tags: [China, Storage, Distributed Systems, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/juicefs/engineering
+- name: Greptime 技术
+  site_url: https://greptime.com/blogs
+  enabled: true
+  display: default
+  tags: [China, Database, Rust, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/greptime/engineering
+- name: SelectDB 技术分享
+  site_url: https://www.selectdb.com/blogs?categoryId=2
+  enabled: true
+  display: default
+  tags: [China, Database, OLAP, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/selectdb/techshare
+- name: 做有积累的事情 (baotiao)
+  site_url: https://baotiao.github.io/
+  enabled: true
+  display: default
+  tags: [China, Database, PostgreSQL, Personal Blog]
+  feed:
+    type: rsshub
+    route: /tac-custom/baotiao/blog
+- name: Stripe Engineering
+  site_url: https://stripe.dev/blog/topic/engineering
+  enabled: true
+  display: default
+  tags: [Engineering, Database, Payments]
+  feed:
+    type: rsshub
+    route: /tac-custom/stripe/engineering
+- name: Figma Infrastructure
+  site_url: https://www.figma.com/blog/infrastructure/
+  enabled: true
+  display: default
+  tags: [Infrastructure, Database, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/figma/infrastructure
+- name: DuckDB Engineering Blog
+  site_url: https://duckdb.org/news/
+  enabled: true
+  display: default
+  tags: [Database, Query Engine, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/duckdb/blog
+- name: ScyllaDB Engineering
+  site_url: https://www.scylladb.com/blog/engineering/
+  enabled: true
+  display: default
+  tags: [Database, Distributed Systems, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/scylladb/engineering
+- name: Apache DataFusion Blog
+  site_url: https://datafusion.apache.org/blog/
+  enabled: true
+  display: default
+  tags: [Database, Query Engine, Rust]
+  feed:
+    type: rsshub
+    route: /tac-custom/datafusion/blog
+- name: pganalyze Blog
+  site_url: https://pganalyze.com/blog
+  enabled: true
+  display: default
+  tags: [Database, PostgreSQL, Performance]
+  feed:
+    type: rsshub
+    route: /tac-custom/pganalyze/blog
+- name: QuestDB Engineering
+  site_url: https://questdb.com/blog/
+  enabled: true
+  display: default
+  tags: [Database, Time Series, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/questdb/engineering
+- name: The Consensus - Articles
+  site_url: https://theconsensus.dev/
+  enabled: true
+  display: default
+  tags: [Database, Programming Languages, Systems]
+  feed:
+    type: rsshub
+    route: /tac-custom/theconsensus/articles
+- name: Oxide Public RFDs
+  site_url: https://rfd.shared.oxide.computer/
+  enabled: true
+  display: default
+  tags: [Infrastructure, Storage, Networking]
+  feed:
+    type: rsshub
+    route: /tac-custom/oxide/rfds
+- name: Chris Down
+  site_url: https://chrisdown.name/
+  enabled: true
+  display: default
+  tags: [Linux, Kernel, Systems]
+  feed:
+    type: rsshub
+    route: /tac-custom/chrisdown/blog
+- name: LinkedIn Engineering - Scalability
+  site_url: https://www.linkedin.com/blog/engineering/scalability
+  enabled: true
+  display: default
+  tags: [Infrastructure, Distributed Systems, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/linkedin/scalability
+- name: LinkedIn Engineering - Architecture
+  site_url: https://www.linkedin.com/blog/engineering/architecture
+  enabled: true
+  display: default
+  tags: [Architecture, Infrastructure, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/linkedin/architecture
+- name: Shopify Infrastructure
+  site_url: https://shopify.engineering/topics/infrastructure
+  enabled: true
+  display: default
+  tags: [Infrastructure, Database, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/shopify/infrastructure
+- name: Canva Engineering - Backend
+  site_url: https://www.canva.dev/blog/engineering/tag/backend/
+  enabled: true
+  display: default
+  tags: [Backend, Engineering, Infrastructure]
+  feed:
+    type: rsshub
+    route: /tac-custom/canva/backend
+- name: Canva Engineering - Infrastructure
+  site_url: https://www.canva.dev/blog/engineering/tag/infrastructure/
+  enabled: true
+  display: default
+  tags: [Infrastructure, Engineering, Database]
+  feed:
+    type: rsshub
+    route: /tac-custom/canva/infrastructure
+- name: Redpanda Blog
+  site_url: https://www.redpanda.com/blog
+  enabled: true
+  display: default
+  tags: [Database, Streaming, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/redpanda/blog
+- name: ClickHouse Engineering
+  site_url: https://clickhouse.com/blog?category=engineering
+  enabled: true
+  display: default
+  tags: [Database, OLAP, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/clickhouse/engineering
+- name: Phil Eaton - databases
+  site_url: https://notes.eatonphil.com/tags/databases.html
+  enabled: true
+  display: default
+  tags: [Database, Personal Blog, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/eatonphil/databases
+- name: Phil Eaton - distsys
+  site_url: https://notes.eatonphil.com/tags/distsys.html
+  enabled: true
+  display: default
+  tags: [Distributed Systems, Personal Blog, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/eatonphil/distsys
+- name: WebKit Performance
+  site_url: https://webkit.org/blog/category/performance/
+  enabled: true
+  display: default
+  tags: [Browser, Performance, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/webkit/performance
+- name: PortSwigger Research
+  site_url: https://portswigger.net/research
+  enabled: true
+  display: default
+  tags: [Security, Web, Research]
+  feed:
+    type: rsshub
+    route: /tac-custom/portswigger/research
+- name: watchTowr Labs
+  site_url: https://labs.watchtowr.com/
+  enabled: true
+  display: default
+  tags: [Security, Research, Vulnerability]
+  feed:
+    type: rsshub
+    route: /tac-custom/watchtowr/labs
+- name: Quarkslab Blog
+  site_url: https://blog.quarkslab.com/
+  enabled: true
+  display: default
+  tags: [Security, Reverse Engineering, Research]
+  feed:
+    type: rsshub
+    route: /tac-custom/quarkslab/blog
+- name: ProjectDiscovery - Vulnerability Research
+  site_url: https://projectdiscovery.io/blog/category/vulnerability-research/1
+  enabled: true
+  display: default
+  tags: [Security, Vulnerability, Research]
+  feed:
+    type: rsshub
+    route: /tac-custom/projectdiscovery/vulnerability-research
+- name: SpecterOps Research & Tradecraft
+  site_url: https://specterops.io/blog/category/research/
+  enabled: true
+  display: default
+  tags: [Security, Windows, Research]
+  feed:
+    type: rsshub
+    route: /tac-custom/specterops/research
+- name: Assetnote Research
+  site_url: https://blog.assetnote.io/
+  enabled: true
+  display: default
+  tags: [Security, Web, Research]
+  feed:
+    type: rsshub
+    route: /tac-custom/assetnote/research
+- name: Modal Engineering
+  site_url: https://modal.com/blog
+  enabled: true
+  display: default
+  tags: [AI, Infrastructure, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/modal/blog
+- name: vLLM Blog
+  site_url: https://vllm.ai/blog
+  enabled: true
+  display: default
+  tags: [AI, Inference, Engineering]
+  feed:
+    type: rsshub
+    route: /tac-custom/vllm/blog
+- name: Airbnb Engineering Infrastructure
+  site_url: https://medium.com/airbnb-engineering/infrastructure/home
+  enabled: true
+  display: default
+  tags: [Infrastructure, Engineering, Distributed Systems]
+  feed:
+    type: rsshub
+    route: /tac-custom/airbnb/infrastructure
+- name: Pinterest Engineering Infrastructure
+  site_url: https://medium.com/pinterest-engineering/infrastructure/home
+  enabled: true
+  display: default
+  tags: [Infrastructure, Engineering, Distributed Systems]
+  feed:
+    type: rsshub
+    route: /tac-custom/pinterest/infrastructure
+- name: Google Project Zero
+  site_url: https://projectzero.google/
+  enabled: true
+  display: default
+  tags: [Security, Research, Vulnerabilities]
+  feed:
+    type: rsshub
+    route: /tac-custom/projectzero/blog
 manual_urls: []

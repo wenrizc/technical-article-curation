@@ -95,16 +95,102 @@
 | Code Without Rules | direct `https://codewithoutrules.com/atom.xml` | Python/工程成长与实践文章。 |
 | Addy Osmani | direct `https://addyosmani.com/rss.xml` | 前端/AI/工程领导力文章。 |
 
+## 第三轮：RSSHub 扩展接入（2026-08）
+
+本轮目标：把数据库内核、系统基础设施与安全研究类技术源接入。口径明确为“只收工程/技术内容，不收产品与资讯”，并统一通过本地 RSSHub 采集。
+
+### 接入方式
+
+- 官方 RSSHub 路由可直接覆盖的源：直接配置 `feed.type: rsshub`。
+- 官方 RSSHub 没有路由的源：在 `rsshub-custom/` 编写自定义路由（自包含 `.mjs` 模块 + 注册表注入），构建自定义镜像后经 `/tac-custom/<route>` 采集。
+- 自定义路由全部为轻量实现：能代理上游 RSS/Atom 的直接代理；无 feed 的列表页用 cheerio 解析 HTML 或内嵌 JSON。
+
+### 已接入新源（RSSHub 官方路由）
+
+| 源 | 路由 | 边界 |
+| --- | --- | --- |
+| 字节跳动技术团队（掘金） | `/juejin/posts/1838039172387262` | 字节跳动基础架构实践系列所在团队专栏。 |
+| TiDB 社区博客 - 技术解读 | `/tidb/blog/c/principle-interpretation` | TiDB 产品技术解读。 |
+| TiDB 社区博客 - 实践案例 | `/tidb/blog/c/practical-case` | TiDB 实践案例。 |
+
+### 已接入新源（自定义路由，rsshub-custom/）
+
+| 源 | 路由 | 采集方式 |
+| --- | --- | --- |
+| OceanBase 社区博客 | `/tac-custom/oceanbase/blog` | 社区 API（engineering 分类） |
+| JuiceFS 工程技术 | `/tac-custom/juicefs/engineering` | 列表页解析 |
+| Greptime 技术 | `/tac-custom/greptime/engineering` | 列表页解析（engineering 分类） |
+| SelectDB 技术分享 | `/tac-custom/selectdb/techshare` | 列表页解析（categoryId=2） |
+| 做有积累的事情 (baotiao) | `/tac-custom/baotiao/blog` | 代理 feed.xml |
+| Stripe Engineering | `/tac-custom/stripe/engineering` | topic 列表页解析 |
+| Figma Infrastructure | `/tac-custom/figma/infrastructure` | 列表页解析（aria-label） |
+| DuckDB Engineering Blog | `/tac-custom/duckdb/blog` | 列表页解析（news） |
+| ScyllaDB Engineering | `/tac-custom/scylladb/engineering` | 代理分类 feed |
+| Apache DataFusion Blog | `/tac-custom/datafusion/blog` | 代理 feed.xml |
+| pganalyze Blog | `/tac-custom/pganalyze/blog` | 代理 feed.xml |
+| QuestDB Engineering | `/tac-custom/questdb/engineering` | tag 列表页解析 |
+| The Consensus - Articles | `/tac-custom/theconsensus/articles` | 代理 rss.xml，过滤 Weekly |
+| Oxide Public RFDs | `/tac-custom/oxide/rfds` | RSC 内嵌 JSON 解析 |
+| Chris Down | `/tac-custom/chrisdown/blog` | 代理 feed.xml |
+| LinkedIn Scalability | `/tac-custom/linkedin/scalability` | 列表页解析 |
+| LinkedIn Architecture | `/tac-custom/linkedin/architecture` | 列表页解析 |
+| Shopify Infrastructure | `/tac-custom/shopify/infrastructure` | topics 列表页解析 |
+| Canva Backend | `/tac-custom/canva/backend` | tag 列表页解析 |
+| Canva Infrastructure | `/tac-custom/canva/infrastructure` | tag 列表页解析 |
+| Redpanda Blog | `/tac-custom/redpanda/blog` | 代理 rss.xml（二次过滤交给评估） |
+| ClickHouse Engineering | `/tac-custom/clickhouse/engineering` | category 列表页解析 |
+| Phil Eaton - databases | `/tac-custom/eatonphil/databases` | tag 列表页解析 |
+| Phil Eaton - distsys | `/tac-custom/eatonphil/distsys` | tag 列表页解析 |
+| WebKit Performance | `/tac-custom/webkit/performance` | 代理分类 feed |
+| PortSwigger Research | `/tac-custom/portswigger/research` | 代理 research rss |
+| watchTowr Labs | `/tac-custom/watchtowr/labs` | 代理 feed |
+| Quarkslab Blog | `/tac-custom/quarkslab/blog` | 代理 feeds |
+| ProjectDiscovery VR | `/tac-custom/projectdiscovery/vulnerability-research` | category 列表页解析 |
+| SpecterOps Research | `/tac-custom/specterops/research` | 代理分类 feed |
+| Assetnote Research | `/tac-custom/assetnote/research` | 代理 feed.xml |
+| Modal Engineering | `/tac-custom/modal/blog` | 代理 atom.xml |
+| vLLM Blog | `/tac-custom/vllm/blog` | 代理 rss.xml |
+| Airbnb Engineering Infrastructure | `/tac-custom/airbnb/infrastructure` | 代理 Medium tagged feed（经 mihomo 代理） |
+| Pinterest Engineering Infrastructure | `/tac-custom/pinterest/infrastructure` | 代理 Medium tagged feed（经 mihomo 代理） |
+| Google Project Zero | `/tac-custom/projectzero/blog` | 代理 projectzero.google feed.xml（经 mihomo 代理） |
+
+### 已检查但本轮未接入
+
+| 候选 | 结果 | 理由 |
+| --- | --- | --- |
+| 阿男聊技术 (weinan.io) | 用户明确排除 | 不加入。 |
+| Uber Engineering | Cloudflare 反爬 | 容器内请求被 429 拦截（“Just a moment”），需浏览器 UA 或绕过方案。 |
+
+### 代理接入说明（Airbnb / Pinterest / Project Zero）
+
+这三个源原本因 Medium/blogspot 从当前网络不可达而未接入。后通过宿主机 mihomo（clash）代理解决：
+
+- mihomo 开启 `allow-lan` 并绑定 Docker 桥接网卡 `172.18.0.1`，容器内 curl 经 `http://172.18.0.1:7890` 走代理。
+- `rsshub.env` 配置 `PROXY_PROTOCOL=http / PROXY_HOST=172.18.0.1 / PROXY_PORT=7890 / PROXY_STRATEGY=all`。
+- Node undici TLS 与部分 trojan 节点链路不兼容，`helpers.mjs` 的 `fetchText` 优先使用 curl 子进程（带 `--retry-all-errors` 重试），失败才回退 Node fetch。
+- RSSHub 默认 30s 请求超时对慢源不够，`rsshub.env` 中 `REQUEST_TIMEOUT=120000` 放大超时。
+- 代理节点切换依赖 mihomo API（`PUT /proxies/Proxy`），节点 34（日本）/86（英国）对 Google 系可达；节点稳定性有波动，curl 重试兜底。
+
+### 自定义 RSSHub 扩展说明
+
+`rsshub-custom/` 目录：
+
+- `routes/`：自定义路由模块（`.mjs`），每个源一个文件，`helpers.mjs` 提供通用代理/列表解析工具。
+- `inject.mjs`：把路由模块复制进 RSSHub dist，并在 `routes-*.mjs` 注册表中注入 `tac-custom` namespace（幂等）。
+- `Dockerfile`：基于固定 digest 的官方 `diygod/rsshub:chromium-bundled` 镜像，启动前执行注入再运行官方入口；升级基础镜像时需重新验证注册表格式。
+- `compose.dev.yml` 的 `rsshub` 服务已改为构建自定义镜像。
+- TigerBeetle 已在第二轮通过官方 Atom feed 接入，本轮不重复配置。
+
+新增源前只需在 `routes/` 加一个模块并重建镜像；删除源时把对应源条目从 `config/sources.yaml` 移除即可（路由保留不影响其他源）。
+
 ## 已检查但未接入
 
 | 候选 | 结果 | 理由 |
 | --- | --- | --- |
 | Uber Engineering | 406 | 当前 feed 请求不可用。 |
-| Airbnb Engineering | 连接 Medium 失败 | `medium.com/feed/...` 当前网络不可达。 |
 | Discord Engineering | 连接失败 | 当前网络不可达。 |
 | DoorDash Engineering | 403 | 当前请求被拒绝。 |
 | LinkedIn Engineering | 404 | 测试 feed 不存在。 |
-| Pinterest Engineering | 连接 Medium 失败 | 当前网络不可达。 |
 | Shopify Engineering | 返回 HTML、0 feed 条目 | `blog.atom` 不再是有效 feed。 |
 | Etsy Code as Craft | 连接失败 | 当前网络不可达。 |
 | Quora Engineering | 连接失败 | 当前网络不可达。 |

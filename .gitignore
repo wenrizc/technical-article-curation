@@ -25,6 +25,8 @@ dist/
 .env
 .env.*
 !.env.example
+rsshub.env
+scripts/.zhihu-playwright-profile/
 
 # Runtime data and generated output
 data/

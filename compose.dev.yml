@@ -15,9 +15,17 @@ services:
       - rsshub
 
   rsshub:
-    image: diygod/rsshub:chromium-bundled
+    build:
+      context: ./rsshub-custom
+    image: tac-rsshub:custom
     ports:
       - "1200:1200"
-    environment:
-      CACHE_TYPE: memory
-      ZHIHU_COOKIES: "${ZHIHU_COOKIES:-}"
+    env_file:
+      - path: rsshub.env
+        required: false
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1450

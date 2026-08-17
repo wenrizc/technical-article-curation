@@ -140,8 +140,11 @@ sources:
 本地同时启动 TAC 和 RSSHub：
 
 ```powershell
+Copy-Item rsshub.env.example rsshub.env
 docker compose -f compose.dev.yml up
 ```
+
+`rsshub.env` 用于保存可选的知乎 Cookie 与代理配置，已被 Git 忽略。无需这些配置时可不创建该文件；需要时请从 `rsshub.env.example` 复制后填写。
 
 启用内置定时调度示例：
 
