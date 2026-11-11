@@ -10,17 +10,6 @@ sources:
   feed:
     type: direct
     url: https://tech.meituan.com/feed/
-- name: 有赞技术团队
-  site_url: https://tech.youzan.com/
-  enabled: true
-  display: featured
-  tags:
-  - Engineering
-  - Architecture
-  - China
-  feed:
-    type: direct
-    url: https://tech.youzan.com/rss/
 - name: Cloudflare Blog
   site_url: https://blog.cloudflare.com/
   enabled: true
@@ -115,7 +104,7 @@ sources:
   - Agents
   feed:
     type: rsshub
-    route: /anthropic/engineering
+    route: /tac-custom/anthropic/engineering
 - name: Amazon Science
   site_url: https://www.amazon.science/
   enabled: true
@@ -226,17 +215,6 @@ sources:
   feed:
     type: direct
     url: https://engineering.salesforce.com/feed/
-- name: Square Developer Blog
-  site_url: https://developer.squareup.com/blog/
-  enabled: true
-  display: default
-  tags:
-  - Payments
-  - Developer Tools
-  - Engineering
-  feed:
-    type: direct
-    url: https://developer.squareup.com/blog/rss.xml
 - name: PlanetScale Blog
   site_url: https://planetscale.com/blog
   enabled: true
@@ -281,17 +259,6 @@ sources:
   feed:
     type: direct
     url: https://blog.trailofbits.com/index.xml
-- name: V8 Blog
-  site_url: https://v8.dev/blog
-  enabled: true
-  display: default
-  tags:
-  - JavaScript
-  - Performance
-  - Runtime
-  feed:
-    type: direct
-    url: https://v8.dev/blog.atom
 - name: Go Blog
   site_url: https://go.dev/blog/
   enabled: true
@@ -347,28 +314,6 @@ sources:
   feed:
     type: direct
     url: https://nullprogram.com/feed/
-- name: Lilian Weng
-  site_url: https://lilianweng.github.io/
-  enabled: true
-  display: featured
-  tags:
-  - AI
-  - Machine Learning
-  - Personal Blog
-  feed:
-    type: direct
-    url: https://lilianweng.github.io/lil-log/feed.xml
-- name: Chip Huyen
-  site_url: https://huyenchip.com/
-  enabled: true
-  display: featured
-  tags:
-  - AI
-  - Machine Learning
-  - Personal Blog
-  feed:
-    type: direct
-    url: https://huyenchip.com/feed.xml
 - name: Eugene Yan
   site_url: https://eugeneyan.com/
   enabled: true
@@ -411,8 +356,8 @@ sources:
   - Systems
   - Personal Blog
   feed:
-    type: direct
-    url: https://maskray.me/blog/atom.xml
+    type: rsshub
+    route: /tac-custom/maskray/blog
 - name: Josh W Comeau
   site_url: https://www.joshwcomeau.com/
   enabled: true
@@ -435,17 +380,6 @@ sources:
   feed:
     type: direct
     url: https://jakearchibald.com/posts.rss
-- name: ACM Queue Articles
-  site_url: https://queue.acm.org/
-  enabled: true
-  display: featured
-  tags:
-  - Systems
-  - Architecture
-  - Research
-  feed:
-    type: direct
-    url: https://queue.acm.org/rss/feeds/articles.xml
 - name: LoRexxar Blog
   site_url: https://lorexxar.cn/
   enabled: true
@@ -457,17 +391,6 @@ sources:
   feed:
     type: direct
     url: https://lorexxar.cn/atom.xml
-- name: CoolShell
-  site_url: https://coolshell.cn/
-  enabled: true
-  display: featured
-  tags:
-  - Software Engineering
-  - Architecture
-  - China
-  feed:
-    type: direct
-    url: https://coolshell.cn/feed
 - name: Bram.us
   site_url: https://www.bram.us
   enabled: true
@@ -490,28 +413,6 @@ sources:
   feed:
     type: direct
     url: https://tschatzl.github.io/feed.xml
-- name: Skywind Inside
-  site_url: https://www.skywind.me/blog/
-  enabled: true
-  display: featured
-  tags:
-  - Programming
-  - Systems
-  - China
-  feed:
-    type: direct
-    url: http://www.skywind.me/blog/feed
-- name: Wang Yi AI
-  site_url: https://wangyi.ai/
-  enabled: true
-  display: default
-  tags:
-  - AI
-  - Personal Blog
-  - China
-  feed:
-    type: direct
-    url: https://wangyi.ai/atom.xml
 - name: Crunchy Data Blog
   site_url: https://www.crunchydata.com/blog
   enabled: true
@@ -531,6 +432,8 @@ sources:
   - Linux
   - Security
   - Systems
+  exclude_title_patterns:
+  - ^Security updates for
   feed:
     type: direct
     url: https://lwn.net/headlines/rss
@@ -600,17 +503,6 @@ sources:
   feed:
     type: direct
     url: https://andyatkinson.com/feed.xml
-- name: Adrien Grand
-  site_url: https://jpountz.github.io/
-  enabled: true
-  display: default
-  tags:
-  - Search
-  - Performance
-  - Personal Blog
-  feed:
-    type: direct
-    url: https://jpountz.github.io/feed.xml
 - name: Anders Murphy
   site_url: https://andersmurphy.com/
   enabled: true
@@ -686,7 +578,7 @@ sources:
   - Research
   feed:
     type: rsshub
-    route: /openai/research
+    route: /tac-custom/openai/research
 - name: Engineering@Microsoft
   site_url: https://devblogs.microsoft.com/engineering-at-microsoft/
   enabled: true
@@ -797,28 +689,6 @@ sources:
   feed:
     type: direct
     url: https://blog.ml.cmu.edu/feed/
-- name: Distill
-  site_url: https://distill.pub/
-  enabled: true
-  display: default
-  tags:
-  - Research
-  - Machine Learning
-  - Visualization
-  feed:
-    type: direct
-    url: https://distill.pub/rss.xml
-- name: Stanford AI Lab Blog
-  site_url: https://ai.stanford.edu/blog/
-  enabled: true
-  display: default
-  tags:
-  - Research
-  - AI
-  - Machine Learning
-  feed:
-    type: direct
-    url: https://ai.stanford.edu/blog/feed.xml
 - name: Armin Ronacher
   site_url: https://lucumr.pocoo.org/
   enabled: true
@@ -863,17 +733,6 @@ sources:
   feed:
     type: direct
     url: https://xeiaso.net/blog.rss
-- name: The Morning Paper
-  site_url: https://blog.acolyer.org/
-  enabled: true
-  display: default
-  tags:
-  - Papers
-  - Distributed Systems
-  - Research
-  feed:
-    type: direct
-    url: https://blog.acolyer.org/feed/
 - name: TigerBeetle Blog
   site_url: https://tigerbeetle.com/blog/
   enabled: true
@@ -929,17 +788,6 @@ sources:
   feed:
     type: direct
     url: https://www.righto.com/feeds/posts/default?alt=rss
-- name: John Regehr
-  site_url: https://blog.regehr.org/
-  enabled: true
-  display: default
-  tags:
-  - Compilers
-  - Formal Methods
-  - Research
-  feed:
-    type: direct
-    url: https://blog.regehr.org/feed
 - name: Niko Matsakis
   site_url: https://smallcultfollowing.com/babysteps/
   enabled: true
@@ -951,17 +799,6 @@ sources:
   feed:
     type: direct
     url: https://smallcultfollowing.com/babysteps/index.xml
-- name: Without Boats
-  site_url: https://without.boats/
-  enabled: true
-  display: default
-  tags:
-  - Rust
-  - Programming Languages
-  - Software Design
-  feed:
-    type: direct
-    url: https://without.boats/index.xml
 - name: Faultlore
   site_url: https://faultlore.com/blah/
   enabled: true
@@ -1073,22 +910,6 @@ sources:
   feed:
     type: rsshub
     route: /zhihu/posts/people/wang-feng-98-82
-- name: 知乎 - 阿莱克西斯
-  site_url: https://www.zhihu.com/people/ming-zi-zong-shi-hen-nan-qi/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, Database, Distributed Systems]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/ming-zi-zong-shi-hen-nan-qi
-- name: 知乎 - 陈硕
-  site_url: https://www.zhihu.com/people/giantchen/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, Linux, C++]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/giantchen
 - name: 知乎 - 南山烟雨珠江潮
   site_url: https://www.zhihu.com/people/frmf/posts
   enabled: true
@@ -1129,14 +950,6 @@ sources:
   feed:
     type: rsshub
     route: /zhihu/posts/people/kevwan
-- name: 知乎 - 李博杰
-  site_url: https://www.zhihu.com/people/li-bo-jie/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, AI, Learning]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/li-bo-jie
 - name: 知乎 - 腾讯技术工程
   site_url: https://www.zhihu.com/people/teng-xun-ji-zhu-gong-cheng/posts
   enabled: true
@@ -1201,14 +1014,6 @@ sources:
   feed:
     type: rsshub
     route: /zhihu/posts/people/chen-xun-51
-- name: 知乎 - 方佳瑞
-  site_url: https://www.zhihu.com/people/feifeibear/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, AI, Systems]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/feifeibear
 - name: 知乎 - Hakurei Reimu
   site_url: https://www.zhihu.com/people/Kinnariya/posts
   enabled: true
@@ -1249,14 +1054,6 @@ sources:
   feed:
     type: rsshub
     route: /zhihu/posts/people/theanarkh
-- name: 知乎 - Ed Huang
-  site_url: https://www.zhihu.com/people/huang-dong-xu/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, Database, Distributed Systems]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/huang-dong-xu
 - name: 知乎 - PENG Bo
   site_url: https://www.zhihu.com/people/bopengbopeng/posts
   enabled: true
@@ -1273,30 +1070,6 @@ sources:
   feed:
     type: rsshub
     route: /zhihu/posts/people/skyzh
-- name: 知乎 - weishu
-  site_url: https://www.zhihu.com/people/tian-weishu/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, Android, Systems]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/tian-weishu
-- name: 知乎 - 肖宏辉
-  site_url: https://www.zhihu.com/people/xiao-hong-hui-15/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, Networking, Systems]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/xiao-hong-hui-15
-- name: 知乎 - 严格鸽
-  site_url: https://www.zhihu.com/people/yan-ge-ge-32-1/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, C++, Programming Languages]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/yan-ge-ge-32-1
 - name: 知乎 - 罗宸
   site_url: https://www.zhihu.com/people/luochen1990/posts
   enabled: true
@@ -1305,14 +1078,6 @@ sources:
   feed:
     type: rsshub
     route: /zhihu/posts/people/luochen1990
-- name: 知乎 - 不吃夹生饭
-  site_url: https://www.zhihu.com/people/bu-chi-jia-sheng-fan/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, Frontend, Security]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/bu-chi-jia-sheng-fan
 - name: 知乎 - 韦易笑
   site_url: https://www.zhihu.com/people/skywind3000/posts
   enabled: true
@@ -1321,22 +1086,6 @@ sources:
   feed:
     type: rsshub
     route: /zhihu/posts/people/skywind3000
-- name: 知乎 - 圆角骑士魔理沙
-  site_url: https://www.zhihu.com/people/marisa.moe/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, Programming Languages, Performance]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/marisa.moe
-- name: 知乎 - Max Xing
-  site_url: https://www.zhihu.com/people/max-xing/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, Compilers, JVM]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/max-xing
 - name: 知乎 - 皮振伟
   site_url: https://www.zhihu.com/people/pizhenwei/posts
   enabled: true
@@ -1377,22 +1126,6 @@ sources:
   feed:
     type: rsshub
     route: /zhihu/posts/people/e-han-jia-gou-shi
-- name: 知乎 - 网易易盾
-  site_url: https://www.zhihu.com/people/wang-yi-yun-yi-dun/posts
-  enabled: true
-  display: default
-  tags: [Zhihu, China, Security, Engineering]
-  feed:
-    type: rsshub
-    route: /zhihu/posts/people/wang-yi-yun-yi-dun
-- name: 字节跳动技术团队（掘金）
-  site_url: https://juejin.cn/user/1838039172387262
-  enabled: true
-  display: default
-  tags: [China, Engineering, Infrastructure, Database]
-  feed:
-    type: rsshub
-    route: /juejin/posts/1838039172387262
 - name: TiDB 社区博客 - 技术解读
   site_url: https://tidb.net/blog
   enabled: true
@@ -1409,14 +1142,6 @@ sources:
   feed:
     type: rsshub
     route: /tidb/blog/c/practical-case
-- name: OceanBase 社区博客
-  site_url: https://www.oceanbase.com/blog/engineering
-  enabled: true
-  display: default
-  tags: [China, Database, Distributed Systems, Engineering]
-  feed:
-    type: rsshub
-    route: /tac-custom/oceanbase/blog
 - name: JuiceFS 工程技术
   site_url: https://juicefs.com/en/blog/engineering/
   enabled: true
@@ -1481,14 +1206,6 @@ sources:
   feed:
     type: rsshub
     route: /tac-custom/scylladb/engineering
-- name: Apache DataFusion Blog
-  site_url: https://datafusion.apache.org/blog/
-  enabled: true
-  display: default
-  tags: [Database, Query Engine, Rust]
-  feed:
-    type: rsshub
-    route: /tac-custom/datafusion/blog
 - name: pganalyze Blog
   site_url: https://pganalyze.com/blog
   enabled: true
@@ -1569,14 +1286,6 @@ sources:
   feed:
     type: rsshub
     route: /tac-custom/canva/infrastructure
-- name: Redpanda Blog
-  site_url: https://www.redpanda.com/blog
-  enabled: true
-  display: default
-  tags: [Database, Streaming, Engineering]
-  feed:
-    type: rsshub
-    route: /tac-custom/redpanda/blog
 - name: ClickHouse Engineering
   site_url: https://clickhouse.com/blog?category=engineering
   enabled: true
@@ -1633,14 +1342,6 @@ sources:
   feed:
     type: rsshub
     route: /tac-custom/quarkslab/blog
-- name: ProjectDiscovery - Vulnerability Research
-  site_url: https://projectdiscovery.io/blog/category/vulnerability-research/1
-  enabled: true
-  display: default
-  tags: [Security, Vulnerability, Research]
-  feed:
-    type: rsshub
-    route: /tac-custom/projectdiscovery/vulnerability-research
 - name: SpecterOps Research & Tradecraft
   site_url: https://specterops.io/blog/category/research/
   enabled: true
@@ -1649,22 +1350,6 @@ sources:
   feed:
     type: rsshub
     route: /tac-custom/specterops/research
-- name: Assetnote Research
-  site_url: https://blog.assetnote.io/
-  enabled: true
-  display: default
-  tags: [Security, Web, Research]
-  feed:
-    type: rsshub
-    route: /tac-custom/assetnote/research
-- name: Modal Engineering
-  site_url: https://modal.com/blog
-  enabled: true
-  display: default
-  tags: [AI, Infrastructure, Engineering]
-  feed:
-    type: rsshub
-    route: /tac-custom/modal/blog
 - name: vLLM Blog
   site_url: https://vllm.ai/blog
   enabled: true

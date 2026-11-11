@@ -21,6 +21,10 @@ export const route = {
     handler: async () =>
         parseListing('https://greptime.com/blogs?category=engineering', {
             linkSelector: 'a[href*="/blogs/"]',
+            titleSelector: 'h2.article-title, h3.blog-card-title',
+            // 只收工程/实践类文章，跳过 Product 发布与 Monthly 月报。
+            excludeSelector: '.type',
+            excludeValues: ['Product', 'Monthly'],
             urlPatterns: ['/blogs/20'],
             siteTitle: 'Greptime Blog - Engineering',
         }),

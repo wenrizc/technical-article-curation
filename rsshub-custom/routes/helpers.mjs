@@ -141,7 +141,11 @@ async function proxyFeed(sourceUrl, options = {}) {
 }
 
 // 通用 HTML 列表页解析：linkSelector 选择文章链接，可选 titleSelector 取标题。
-async function parseListing(url, { linkSelector, titleSelector, baseUrl, urlPatterns = [], filter, siteTitle }) {
+// excludeSelector + excludeValues 可在卡片内读取分类文本并按值跳过（如 Product/Monthly）。
+async function parseListing(
+    url,
+    { linkSelector, titleSelector, baseUrl, urlPatterns = [], filter, excludeSelector, excludeValues = [], siteTitle }
+) {
     const html = await fetchText(url);
     const $ = cheerio.load(html);
     const base = baseUrl || new URL(url).origin;
@@ -155,6 +159,12 @@ async function parseListing(url, { linkSelector, titleSelector, baseUrl, urlPatt
         const resolved = new URL(href, base).href;
         if (urlPatterns.length && !urlPatterns.some((p) => resolved.includes(p))) {
             return;
+        }
+        if (excludeSelector && excludeValues.length) {
+            const category = node.find(excludeSelector).first().text().trim();
+            if (excludeValues.includes(category)) {
+                return;
+            }
         }
         const title = titleSelector ? node.find(titleSelector).first().text().trim() : node.text().trim();
         if (!title && !resolved) {

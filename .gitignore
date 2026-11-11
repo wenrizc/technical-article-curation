@@ -50,3 +50,7 @@ tests/fixtures/tmp/
 *.swo
 .DS_Store
 Thumbs.db
+
+# Local edit backups
+*.bak
+*.bak.*

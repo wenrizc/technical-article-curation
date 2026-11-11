@@ -1,12 +1,12 @@
-// Modal Engineering（GPU runtime / serverless 基础设施）。
-// 上游：modal.com/blog/atom.xml。
+// MaskRay（编译器 / 链接器 / ELF / LLVM）。
+// 宿主机直连 maskray.me 超时，改由容器内 curl 经 mihomo 代理抓上游 Atom。
 
 import { proxyFeed } from './helpers.mjs';
 
 export const route = {
-    path: '/modal/blog',
+    path: '/maskray/blog',
     categories: ['programming'],
-    example: '/tac/modal/blog',
+    example: '/tac-custom/maskray/blog',
     parameters: {},
     features: {
         requireConfig: false,
@@ -16,11 +16,11 @@ export const route = {
         supportPodcast: false,
         supportScihub: false,
     },
-    name: 'Modal Engineering',
+    name: 'MaskRay',
     maintainers: ['tac'],
     handler: async () =>
-        proxyFeed('https://modal.com/blog/atom.xml', {
-            title: 'Modal Blog',
-            siteUrl: 'https://modal.com/blog',
+        proxyFeed('https://maskray.me/blog/atom.xml', {
+            title: 'MaskRay',
+            siteUrl: 'https://maskray.me/blog/',
         }),
 };

@@ -23,6 +23,11 @@ services:
     env_file:
       - path: rsshub.env
         required: false
+    environment:
+      # 自定义路由经 curl 子进程出海，指向宿主机 mihomo 混合端口
+      PROXY_PROTOCOL: "http"
+      PROXY_HOST: "172.17.0.1"
+      PROXY_PORT: "7890"
 
 networks:
   default:
