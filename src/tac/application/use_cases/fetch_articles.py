@@ -165,19 +165,48 @@ async def _playwright_fallback_reason() -> str | None:
     return _PLAYWRIGHT_FALLBACK_REASON
 
 
+# aiohttp 默认 max_line_size/max_field_size 均为 8190，遇到长响应头（如 Cloudflare 的超长
+# Content-Security-Policy）会报 "Got more than 8190 bytes when reading" 导致整篇抓取失败。
+_HTTP_HEADER_LIMIT = 262_144
+
+
+def _long_header_http_strategy_class() -> type:
+    import aiohttp  # type: ignore
+    from crawl4ai.async_crawler_strategy import AsyncHTTPCrawlerStrategy  # type: ignore
+
+    class _LongHeaderHTTPCrawlerStrategy(AsyncHTTPCrawlerStrategy):  # type: ignore[misc]
+        async def start(self) -> None:
+            if self._session:
+                return
+            connector = aiohttp.TCPConnector(
+                limit=self.max_connections,
+                ttl_dns_cache=self.dns_cache_ttl,
+                use_dns_cache=True,
+                force_close=False,
+            )
+            self._session = aiohttp.ClientSession(
+                headers=dict(self._BASE_HEADERS),
+                connector=connector,
+                timeout=aiohttp.ClientTimeout(total=self.DEFAULT_TIMEOUT),
+                max_line_size=_HTTP_HEADER_LIMIT,
+                max_field_size=_HTTP_HEADER_LIMIT,
+            )
+
+    return _LongHeaderHTTPCrawlerStrategy
+
+
 async def _fetch_with_crawler4ai_http(
     url: str, *, timeout_seconds: float, fallback_reason: str
 ) -> FetchResult:
     try:
         from crawl4ai import AsyncWebCrawler  # type: ignore
         from crawl4ai.async_crawler_strategy import (  # type: ignore
-            AsyncHTTPCrawlerStrategy,
             HTTPCrawlerConfig,
         )
     except Exception as exc:
         raise FetchError(f"crawler4ai http fallback unavailable: {exc}") from exc
 
-    strategy = AsyncHTTPCrawlerStrategy(
+    strategy = _long_header_http_strategy_class()(
         HTTPCrawlerConfig(headers=FETCH_HEADERS, follow_redirects=True)
     )
     async with AsyncWebCrawler(crawler_strategy=strategy) as crawler:
@@ -269,23 +298,34 @@ def _fetch_article(
     settings: Settings, article: sqlite3.Row
 ) -> tuple[int, FetchResult | None, str | None]:
     try:
-        source_result = _fetch_from_source_content(article)
+        embedded = _fetch_from_source_content(article)
+        embedded_size = _markdown_size(embedded.markdown) if embedded else 0
+        # 只有 feed 内嵌正文足够长时才直接采用；RSS 摘要通常只有一两句，若直接采信会让
+        # 评估阶段因正文不足而整篇 low_confidence，因此短摘要要回退到正文抓取。
         if (
-            source_result
-            and _markdown_size(source_result.markdown) <= settings.fetch_max_markdown_bytes
+            embedded
+            and settings.fetch_min_embedded_bytes
+            <= embedded_size
+            <= settings.fetch_max_markdown_bytes
         ):
-            result = source_result
+            result = embedded
         elif settings.fetch_fixture_path:
             result = FetchResult(
                 markdown=settings.fetch_fixture_path.read_text(encoding="utf-8"),
                 metadata={"crawler": "fixture", "url": article["url"]},
             )
         else:
-            result = fetch_url(
-                article["url"],
-                crawler4ai_enabled=settings.crawler4ai_enabled,
-                timeout_seconds=settings.fetch_timeout_seconds,
-            )
+            try:
+                result = fetch_url(
+                    article["url"],
+                    crawler4ai_enabled=settings.crawler4ai_enabled,
+                    timeout_seconds=settings.fetch_timeout_seconds,
+                )
+            except Exception:
+                # 抓取失败时退回 feed 内嵌摘要，保留原有“低置信”判定而不是直接判抓取失败。
+                if embedded is None:
+                    raise
+                result = embedded
         if not result.markdown.strip():
             raise ValueError("empty markdown")
         markdown_size = _markdown_size(result.markdown)

@@ -61,28 +61,44 @@ def test_cron_schedule_rejects_invalid_expression():
         CronSchedule.parse("0 8 * *")
 
 
+def test_scheduler_lists_fetch_and_evaluate_schedules(tmp_path):
+    settings = _settings(
+        tmp_path,
+        schedule_fetch_cron="0 18 * * *",
+        schedule_evaluate_cron="30 18 * * *",
+    )
+    manager = JobManager(settings)
+    scheduler = SchedulerService(settings, manager)
+
+    schedules = scheduler.schedules()
+
+    assert [schedule["schedule_id"] for schedule in schedules] == ["fetch", "evaluate"]
+    assert [schedule["kind"] for schedule in schedules] == ["fetch", "evaluate"]
+    assert [schedule["cron"] for schedule in schedules] == ["0 18 * * *", "30 18 * * *"]
+
+
 def test_scheduler_manual_trigger_submits_persistent_job(tmp_path):
     settings = _settings(tmp_path)
     manager = JobManager(settings)
     scheduler = SchedulerService(settings, manager)
 
-    job = asyncio.run(scheduler.trigger("run", manual=True))
+    job = asyncio.run(scheduler.trigger("fetch", manual=True))
     asyncio.run(manager.run_job(job["job_id"]))
     stored = manager.get_job(job["job_id"])
 
-    assert job["schedule_id"] == "run"
+    assert job["schedule_id"] == "fetch"
     assert stored.status == JobStatus.succeeded
-    assert stored.schedule_id == "run"
+    assert stored.schedule_id == "fetch"
 
 
 def test_scheduler_conflict_records_skipped_job(tmp_path):
     settings = _settings(tmp_path)
     manager = JobManager(settings)
-    manager.submit_job("discover", lambda: {})
+    manager.submit_job("run", lambda: {})
     scheduler = SchedulerService(settings, manager)
 
-    job = asyncio.run(scheduler.trigger("run", manual=False))
+    job = asyncio.run(scheduler.trigger("fetch", manual=False))
 
     assert job["status"] == "skipped"
     assert job["trigger"] == "schedule"
-    assert job["schedule_id"] == "run"
+    assert job["schedule_id"] == "fetch"

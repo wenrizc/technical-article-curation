@@ -68,6 +68,41 @@ def run_publish(settings: Settings) -> dict[str, int]:
     return _with_conn(settings, _run)
 
 
+def run_fetch_stage(
+    settings: Settings,
+    *,
+    limit: int | None = None,
+    since: str | None = None,
+    until: str | None = None,
+) -> dict[str, object]:
+    def _run(conn):
+        applied = db.migrate(conn, migrations_dir=settings.migrations_dir)
+        return {
+            "migrate": {"applied": applied},
+            "discover": discover_candidates(settings, conn, since=since, until=until),
+            "fetch": fetch_pending(settings, conn, limit=limit),
+        }
+
+    return _with_conn(settings, _run)
+
+
+def run_evaluate_stage(
+    settings: Settings,
+    *,
+    limit: int | None = None,
+    tag_cache: TagVocabularyCache | None = None,
+) -> dict[str, object]:
+    def _run(conn):
+        applied = db.migrate(conn, migrations_dir=settings.migrations_dir)
+        return {
+            "migrate": {"applied": applied},
+            "evaluate": evaluate_pending(settings, conn, limit=limit, tag_cache=tag_cache),
+            "publish": publish_public(settings, conn),
+        }
+
+    return _with_conn(settings, _run)
+
+
 def run_all(
     settings: Settings,
     *,

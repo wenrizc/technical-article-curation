@@ -38,10 +38,12 @@ class Settings:
     ai_timeout_seconds: float = 90
     job_timeout_seconds: float = 1_800
     fetch_max_markdown_bytes: int = 2_097_152
+    fetch_min_embedded_bytes: int = 1_500
     job_history_limit: int = 100
     db_busy_timeout_ms: int = 5_000
     scheduler_enabled: bool = False
-    schedule_run_cron: str = "0 8 * * *"
+    schedule_fetch_cron: str = "0 18 * * *"
+    schedule_evaluate_cron: str = "30 18 * * *"
     schedule_timezone: str = "UTC"
     scheduler_poll_seconds: float = 30
     rsshub_enabled: bool = False
@@ -145,9 +147,7 @@ def get_settings() -> Settings:
         fetch_max_concurrency=_int_from_env("TAC_FETCH_MAX_CONCURRENCY", 1, minimum=1),
         evaluate_max_concurrency=_int_from_env("TAC_EVALUATE_MAX_CONCURRENCY", 20, minimum=1),
         discover_max_concurrency=_int_from_env("TAC_DISCOVER_MAX_CONCURRENCY", 2, minimum=1),
-        discover_since_days=_optional_int_from_env(
-            "TAC_DISCOVER_SINCE_DAYS", minimum=1, default=1
-        ),
+        discover_since_days=_optional_int_from_env("TAC_DISCOVER_SINCE_DAYS", minimum=1, default=1),
         discover_since=os.environ.get("TAC_DISCOVER_SINCE"),
         discover_until=os.environ.get("TAC_DISCOVER_UNTIL"),
         max_request_body_bytes=_int_from_env("TAC_MAX_REQUEST_BODY_BYTES", 1_048_576, minimum=1),
@@ -157,10 +157,12 @@ def get_settings() -> Settings:
         fetch_max_markdown_bytes=_int_from_env(
             "TAC_FETCH_MAX_MARKDOWN_BYTES", 2_097_152, minimum=1
         ),
+        fetch_min_embedded_bytes=_int_from_env("TAC_FETCH_MIN_EMBEDDED_BYTES", 1_500, minimum=0),
         job_history_limit=_int_from_env("TAC_JOB_HISTORY_LIMIT", 100, minimum=1),
         db_busy_timeout_ms=_int_from_env("TAC_DB_BUSY_TIMEOUT_MS", 5_000, minimum=0),
         scheduler_enabled=_bool_from_env("TAC_SCHEDULER_ENABLED", False),
-        schedule_run_cron=os.environ.get("TAC_SCHEDULE_RUN_CRON", "0 8 * * *").strip(),
+        schedule_fetch_cron=os.environ.get("TAC_SCHEDULE_FETCH_CRON", "0 18 * * *").strip(),
+        schedule_evaluate_cron=os.environ.get("TAC_SCHEDULE_EVALUATE_CRON", "30 18 * * *").strip(),
         schedule_timezone=os.environ.get("TAC_SCHEDULE_TIMEZONE", "UTC").strip(),
         scheduler_poll_seconds=_float_from_env("TAC_SCHEDULER_POLL_SECONDS", 30, minimum=1),
         rsshub_enabled=_bool_from_env("TAC_RSSHUB_ENABLED", False),

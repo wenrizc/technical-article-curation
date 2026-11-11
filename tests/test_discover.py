@@ -1,6 +1,10 @@
 from concurrent.futures import Future
 
-from tac.application.use_cases.discover_articles import discover_candidates
+from tac.application.use_cases.discover_articles import (
+    DiscoveredEntry,
+    _filter_excluded_entries,
+    discover_candidates,
+)
 from tac.infrastructure.db import store as db
 from tac.settings import Settings
 
@@ -583,3 +587,15 @@ sources:
     assert result["found"] == 0
     assert state["last_status"] == "failed"
     assert "listing is disabled" in state["last_error"]
+
+
+def test_filter_excluded_entries_skips_matching_titles():
+    entries = [
+        DiscoveredEntry(title="Security updates for Monday", url="https://lwn.net/1"),
+        DiscoveredEntry(title="Recent work in memory tiering", url="https://lwn.net/2"),
+        DiscoveredEntry(title="Security updates for Friday", url="https://lwn.net/3"),
+    ]
+
+    filtered = _filter_excluded_entries(entries, ["^Security updates for"])
+
+    assert [entry.url for entry in filtered] == ["https://lwn.net/2"]

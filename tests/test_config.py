@@ -63,7 +63,8 @@ def test_admin_runtime_settings_defaults(monkeypatch):
         "TAC_JOB_HISTORY_LIMIT",
         "TAC_DB_BUSY_TIMEOUT_MS",
         "TAC_SCHEDULER_ENABLED",
-        "TAC_SCHEDULE_RUN_CRON",
+        "TAC_SCHEDULE_FETCH_CRON",
+        "TAC_SCHEDULE_EVALUATE_CRON",
         "TAC_SCHEDULE_TIMEZONE",
         "TAC_SCHEDULER_POLL_SECONDS",
         "TAC_RSSHUB_ENABLED",
@@ -99,7 +100,8 @@ def test_admin_runtime_settings_defaults(monkeypatch):
     assert settings.job_history_limit == 100
     assert settings.db_busy_timeout_ms == 5_000
     assert settings.scheduler_enabled is False
-    assert settings.schedule_run_cron == "0 8 * * *"
+    assert settings.schedule_fetch_cron == "0 18 * * *"
+    assert settings.schedule_evaluate_cron == "30 18 * * *"
     assert settings.schedule_timezone == "UTC"
     assert settings.scheduler_poll_seconds == 30
     assert settings.rsshub_enabled is False

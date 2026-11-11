@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -206,6 +207,16 @@ def _strip_invalid_xml_control_chars(content: bytes) -> bytes:
     """移除 RSS/Atom 中会导致 XML 解析失败的 ASCII 控制字符。"""
     invalid = bytes(code for code in range(32) if code not in {9, 10, 13})
     return content.translate(None, invalid)
+
+
+def _filter_excluded_entries(
+    entries: list[DiscoveredEntry], patterns: list[str]
+) -> list[DiscoveredEntry]:
+    """按信源配置的标题正则跳过条目,避免高频摘要专栏进入流水线。"""
+    compiled = [re.compile(pattern) for pattern in patterns]
+    if not compiled:
+        return entries
+    return [entry for entry in entries if not any(p.search(entry.title) for p in compiled)]
 
 
 def _normalize_feed_entry_url(source: SourceConfig, url: str) -> str:
@@ -420,7 +431,7 @@ def _discover_source(
         modified=modified,
         last_status="success",
         last_error=None,
-        entries=entries,
+        entries=_filter_excluded_entries(entries, source.exclude_title_patterns),
     )
 
 

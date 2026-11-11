@@ -656,17 +656,24 @@ def test_admin_tag_candidate_approval_updates_public_tags(tmp_path):
     assert "New Niche Tag" in app.state.tag_cache.names()
 
 
-def test_schedules_api_lists_and_triggers_builtin_run(tmp_path):
-    settings = _settings(tmp_path, scheduler_enabled=True, schedule_run_cron="0 8 * * *")
+def test_schedules_api_lists_and_triggers_builtin_fetch(tmp_path):
+    settings = _settings(
+        tmp_path,
+        scheduler_enabled=True,
+        schedule_fetch_cron="0 18 * * *",
+        schedule_evaluate_cron="30 18 * * *",
+    )
     app = create_app(settings)
 
     with TestClient(app) as client:
         token = _csrf(client)
         schedules = client.get("/api/admin/schedules").json()
-        triggered = client.post("/api/admin/schedules/run/trigger", headers=_headers(token)).json()
+        triggered = client.post(
+            "/api/admin/schedules/fetch/trigger", headers=_headers(token)
+        ).json()
 
-    assert schedules["items"][0]["schedule_id"] == "run"
-    assert schedules["items"][0]["enabled"] is True
-    assert triggered["kind"] == "run"
-    assert triggered["schedule_id"] == "run"
+    assert [item["schedule_id"] for item in schedules["items"]] == ["fetch", "evaluate"]
+    assert all(item["enabled"] is True for item in schedules["items"])
+    assert triggered["kind"] == "fetch"
+    assert triggered["schedule_id"] == "fetch"
     assert triggered["trigger"] == "manual"

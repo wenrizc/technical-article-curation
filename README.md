@@ -39,7 +39,7 @@ SQLite 迁移没有单独的管理 API 或后台任务入口；服务启动和�
 - `POST /api/admin/jobs/run`
 - `GET /api/admin/jobs/{job_id}`
 - `GET /api/admin/schedules`
-- `POST /api/admin/schedules/run/trigger`
+- `POST /api/admin/schedules/{schedule_id}/trigger`（内置计划为 `fetch` 和 `evaluate`）
 
 ## 配置
 
@@ -77,11 +77,13 @@ SQLite 迁移没有单独的管理 API 或后台任务入口；服务启动和�
 - `TAC_AI_TIMEOUT_SECONDS`：AI 请求超时，默认 `90`。
 - `TAC_JOB_TIMEOUT_SECONDS`：后台任务总超时，默认 `1800`。
 - `TAC_FETCH_MAX_MARKDOWN_BYTES`：抓取 Markdown 大小限制，默认 `2097152`。
+- `TAC_FETCH_MIN_EMBEDDED_BYTES`：feed 内嵌正文小于该字节数时不直接采用，改为回退抓取原页正文，避免 RSS 摘要导致整篇低置信，默认 `1500`。
 - `TAC_JOB_HISTORY_LIMIT`：内存任务历史保留数量，默认 `100`。
 - `TAC_DB_BUSY_TIMEOUT_MS`：SQLite busy timeout，默认 `5000`。
 - `TAC_SCHEDULER_ENABLED`：启用内置定时调度，默认 `false`。
-- `TAC_SCHEDULE_RUN_CRON`：完整流水线 `run` 的 5 段 cron 表达式，默认 `0 8 * * *`。
-- `TAC_SCHEDULE_TIMEZONE`：定时调度时区，默认 `UTC`。
+- `TAC_SCHEDULE_FETCH_CRON`：抓取计划 `fetch`（发现 + 抓取）的 5 段 cron 表达式，默认 `0 18 * * *`。
+- `TAC_SCHEDULE_EVALUATE_CRON`：评估计划 `evaluate`（AI 评估 + 发布）的 5 段 cron 表达式，默认 `30 18 * * *`。
+- `TAC_SCHEDULE_TIMEZONE`：定时调度时区，默认 `UTC`。DeepSeek 高峰时段为 UTC 周一至周五 `01:00-04:00` 与 `06:00-10:00`，请把两个计划都安排在空闲时段，并让评估晚于抓取至少 30 分钟。
 - `TAC_SCHEDULER_POLL_SECONDS`：调度器轮询间隔，默认 `30`。
 - `TAC_RSSHUB_ENABLED`：启用 RSSHub feed 来源，默认 `false`。
 - `TAC_RSSHUB_INSTANCE`：默认 RSSHub 实例地址，默认 `http://127.0.0.1:1200`。
@@ -137,6 +139,18 @@ sources:
       base_url: "https://example.com"
 ```
 
+信源还支持在源级别配置标题过滤，命中任一正则的条目会在发现阶段直接跳过，适合过滤高频摘要专栏：
+
+```yaml
+  - name: "LWN.net"
+    site_url: "https://lwn.net/"
+    exclude_title_patterns:
+      - "^Security updates for"
+    feed:
+      type: "direct"
+      url: "https://lwn.net/headlines/rss"
+```
+
 本地同时启动 TAC 和 RSSHub：
 
 ```powershell
@@ -146,14 +160,17 @@ docker compose -f compose.dev.yml up
 
 `rsshub.env` 用于保存可选的知乎 Cookie 与代理配置，已被 Git 忽略。无需这些配置时可不创建该文件；需要时请从 `rsshub.env.example` 复制后填写。
 
-启用内置定时调度示例：
+启用内置定时调度示例（北京时间 18:00 抓取，18:30 评估，均落在 DeepSeek 空闲时段）：
 
 ```powershell
 $env:TAC_SCHEDULER_ENABLED="true"
-$env:TAC_SCHEDULE_RUN_CRON="0 8 * * *"
+$env:TAC_SCHEDULE_FETCH_CRON="0 18 * * *"
+$env:TAC_SCHEDULE_EVALUATE_CRON="30 18 * * *"
 $env:TAC_SCHEDULE_TIMEZONE="Asia/Shanghai"
 uv run uvicorn tac.main:app --host 127.0.0.1 --port 1104 --reload
 ```
+
+调度器只负责按 cron 触发 `fetch` 与 `evaluate` 两类后台任务：`fetch` 计划执行发现和抓取，`evaluate` 计划执行 AI 评估和发布。两者通过 `article_queue` 解耦，因此把评估安排在抓取之后 30 分钟即可，抓取耗时不影响评估启动。
 
 后台任务历史会写入 SQLite 的 `job_runs` 表，服务重启后仍可通过 `/api/admin/jobs` 查询。若重启前存在 `queued` 或 `running` 任务，启动时会标记为 `failed` 并记录中断原因。
 

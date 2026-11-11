@@ -172,12 +172,21 @@ def _load_schedules(
         raise ValueError(f"TAC_SCHEDULE_TIMEZONE is invalid: {settings.schedule_timezone}") from exc
     return [
         ScheduleDefinition(
-            schedule_id="run",
-            kind="run",
-            cron=CronSchedule.parse(settings.schedule_run_cron),
+            schedule_id="fetch",
+            kind="fetch",
+            cron=CronSchedule.parse(settings.schedule_fetch_cron),
             timezone=timezone,
-            runner_factory=lambda: lambda: pipeline.run_all(settings, tag_cache=tag_cache),
-        )
+            runner_factory=lambda: lambda: pipeline.run_fetch_stage(settings),
+        ),
+        ScheduleDefinition(
+            schedule_id="evaluate",
+            kind="evaluate",
+            cron=CronSchedule.parse(settings.schedule_evaluate_cron),
+            timezone=timezone,
+            runner_factory=lambda: (
+                lambda: pipeline.run_evaluate_stage(settings, tag_cache=tag_cache)
+            ),
+        ),
     ]
 
 

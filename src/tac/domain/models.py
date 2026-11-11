@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 from enum import Enum
 from typing import Any, Literal
@@ -166,8 +167,25 @@ class SourceConfig(BaseModel):
     site_url: str | None = None
     tags: list[str] = Field(default_factory=list)
     manual_urls: list[ManualUrl] = Field(default_factory=list)
+    # 按标题正则跳过条目,用于过滤高频摘要专栏(如 LWN 的 "Security updates for ...")。
+    exclude_title_patterns: list[str] = Field(default_factory=list)
 
     model_config = {"extra": "forbid"}
+
+    @field_validator("exclude_title_patterns")
+    @classmethod
+    def exclude_title_patterns_valid(cls, value: list[str]) -> list[str]:
+        cleaned: list[str] = []
+        for pattern in value:
+            text = pattern.strip()
+            if not text:
+                continue
+            try:
+                re.compile(text)
+            except re.error as exc:
+                raise ValueError(f"invalid exclude_title_patterns regex {text!r}: {exc}") from exc
+            cleaned.append(text)
+        return cleaned
 
     @field_validator("manual_urls", mode="before")
     @classmethod

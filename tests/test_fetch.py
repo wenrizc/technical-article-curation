@@ -152,6 +152,7 @@ def test_fetch_pending_prefers_feed_entry_content(tmp_path, monkeypatch):
         prompt_language="zh-CN",
         prompt_path=tmp_path / "evaluate.md",
         few_shot_dir=tmp_path / "few_shots",
+        fetch_min_embedded_bytes=0,
     )
 
     def unexpected_fetch(*args, **kwargs):
@@ -201,6 +202,7 @@ def test_fetch_pending_falls_back_to_crawler_when_feed_entry_content_too_large(
         prompt_path=tmp_path / "evaluate.md",
         few_shot_dir=tmp_path / "few_shots",
         fetch_max_markdown_bytes=10,
+        fetch_min_embedded_bytes=0,
     )
 
     def fetch(_url, *, crawler4ai_enabled=True, timeout_seconds=90):
@@ -214,6 +216,95 @@ def test_fetch_pending_falls_back_to_crawler_when_feed_entry_content_too_large(
     assert result["succeeded"] == 1
     assert fetch_row["content_markdown"] == "short"
     assert '"crawler": "crawler4ai"' in fetch_row["crawler_metadata"]
+
+
+def test_fetch_pending_crawls_when_feed_summary_is_too_short(tmp_path, monkeypatch):
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    article_id, _, _ = db.add_candidate(
+        conn,
+        title="Short Summary Article",
+        url="https://example.com/short-summary",
+        source_name="rss",
+        source_content_markdown="Only a one-line teaser.",
+    )
+    settings = Settings(
+        state_db=tmp_path / "state.db",
+        sources_path=tmp_path / "sources.yaml",
+        public_dir=tmp_path / "public",
+        max_retry=3,
+        model="fixture-model",
+        base_url="https://example.invalid/v1",
+        api_key=None,
+        ai_response_path=None,
+        fetch_fixture_path=None,
+        crawler4ai_enabled=True,
+        fetch_delay_seconds=0,
+        evaluation_max_attempts=3,
+        prompt_language="zh-CN",
+        prompt_path=tmp_path / "evaluate.md",
+        few_shot_dir=tmp_path / "few_shots",
+        fetch_min_embedded_bytes=1_500,
+    )
+    calls = []
+
+    def fetch(url, *, crawler4ai_enabled=True, timeout_seconds=90):
+        calls.append(url)
+        return FetchResult(
+            markdown="# Full page\n\n" + ("body " * 500), metadata={"crawler": "crawler4ai"}
+        )
+
+    monkeypatch.setattr("tac.application.use_cases.fetch_articles.fetch_url", fetch)
+
+    result = fetch_pending(settings, conn)
+    fetch_row = conn.execute("SELECT * FROM fetches WHERE article_id = ?", (article_id,)).fetchone()
+
+    assert calls == ["https://example.com/short-summary"]
+    assert result["succeeded"] == 1
+    assert '"crawler": "crawler4ai"' in fetch_row["crawler_metadata"]
+    assert "Only a one-line teaser." not in fetch_row["content_markdown"]
+
+
+def test_fetch_pending_keeps_feed_summary_when_crawl_fails(tmp_path, monkeypatch):
+    conn = db.connect(tmp_path / "state.db")
+    db.migrate(conn)
+    article_id, _, _ = db.add_candidate(
+        conn,
+        title="Short Summary Article",
+        url="https://example.com/short-summary",
+        source_name="rss",
+        source_content_markdown="Only a one-line teaser.",
+    )
+    settings = Settings(
+        state_db=tmp_path / "state.db",
+        sources_path=tmp_path / "sources.yaml",
+        public_dir=tmp_path / "public",
+        max_retry=3,
+        model="fixture-model",
+        base_url="https://example.invalid/v1",
+        api_key=None,
+        ai_response_path=None,
+        fetch_fixture_path=None,
+        crawler4ai_enabled=True,
+        fetch_delay_seconds=0,
+        evaluation_max_attempts=3,
+        prompt_language="zh-CN",
+        prompt_path=tmp_path / "evaluate.md",
+        few_shot_dir=tmp_path / "few_shots",
+        fetch_min_embedded_bytes=1_500,
+    )
+
+    def fetch(_url, *, crawler4ai_enabled=True, timeout_seconds=90):
+        raise FetchError("crawler4ai returned no markdown")
+
+    monkeypatch.setattr("tac.application.use_cases.fetch_articles.fetch_url", fetch)
+
+    result = fetch_pending(settings, conn)
+    fetch_row = conn.execute("SELECT * FROM fetches WHERE article_id = ?", (article_id,)).fetchone()
+
+    assert result["succeeded"] == 1
+    assert fetch_row["content_markdown"] == "Only a one-line teaser."
+    assert '"crawler": "feed-entry"' in fetch_row["crawler_metadata"]
 
 
 def test_fetch_pending_skips_out_of_range_after_page_date_extraction(tmp_path, monkeypatch):

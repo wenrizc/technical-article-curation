@@ -169,3 +169,13 @@ def test_sitemap_and_listing_sources_validate():
 
     assert sitemap_source.feed is not None
     assert listing_source.feed is not None
+
+
+def test_source_exclude_title_patterns_validates_regex():
+    source = SourceConfig.model_validate(
+        {"name": "lwn", "exclude_title_patterns": ["^Security updates for", "  "]}
+    )
+    assert source.exclude_title_patterns == ["^Security updates for"]
+
+    with pytest.raises(ValidationError, match="exclude_title_patterns"):
+        SourceConfig.model_validate({"name": "bad", "exclude_title_patterns": ["("]})

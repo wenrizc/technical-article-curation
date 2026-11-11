@@ -168,7 +168,8 @@ uv run uvicorn tac.main:app --host 127.0.0.1 --port 1104 --reload
 - `TAC_JOB_HISTORY_LIMIT`：内存任务历史保留数量，默认 `100`。
 - `TAC_DB_BUSY_TIMEOUT_MS`：SQLite busy timeout，默认 `5000`。
 - `TAC_SCHEDULER_ENABLED`：启用内置定时调度，默认 `false`。
-- `TAC_SCHEDULE_RUN_CRON`：完整流水线 `run` 的 5 段 cron 表达式，默认 `0 8 * * *`。
+- `TAC_SCHEDULE_FETCH_CRON`：抓取计划 `fetch`（发现 + 抓取）的 5 段 cron 表达式，默认 `0 18 * * *`。
+- `TAC_SCHEDULE_EVALUATE_CRON`：评估计划 `evaluate`（AI 评估 + 发布）的 5 段 cron 表达式，默认 `30 18 * * *`。
 - `TAC_SCHEDULE_TIMEZONE`：定时调度时区，默认 `UTC`。
 - `TAC_SCHEDULER_POLL_SECONDS`：调度器轮询间隔，默认 `30`。
 - `TAC_RSSHUB_ENABLED`：启用 RSSHub feed 来源，默认 `false`。
